@@ -25,7 +25,9 @@ pub struct Options {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Kind {
     Match,
-    /// Both sides failed (the exe faulted, the engine panicked): inconclusive.
+    /// Both sides failed the same way: the exe's access violation and the
+    /// engine's unmapped read are at the same address (or both divided by
+    /// zero). Consistent, but says nothing about the result.
     BothFailed,
     /// The engine read memory it never maps: outside the exe's data sections
     /// (an out-of-range table index from a random input, landing in `.text`,
@@ -38,6 +40,9 @@ pub enum Kind {
     NanBits,
     ExeFaultOnly,
     RustPanicOnly,
+    /// Both failed, but differently (another address, or another kind of
+    /// failure) where the engine had the memory to compare.
+    FaultMismatch,
     /// The exe removed a different number of stack bytes than the listed
     /// convention says: the list, not the translation, is wrong.
     Convention,
@@ -69,6 +74,17 @@ pub struct Report {
     /// (address, unit, vector id, inputs, exe, rust, kind) for every failure.
     pub failures: Vec<(u32, String, String, String, String, String, Kind)>,
     pub failing_functions: BTreeMap<u32, usize>,
+    /// Functions whose exe results (values, not faults) take two or more
+    /// distinct values over the inputs: the matches there are not vacuous.
+    pub varying: usize,
+    /// Functions whose exe results are all the same value (or that only
+    /// faulted): a match there only shows the constant is right.
+    pub constant: Vec<u32>,
+    /// f32 results where the exe's ST0 holds more precision than a float
+    /// (ST0 rounded to double differs from ST0 rounded to float): the `f32`
+    /// signature drops bits a caller using ST0 directly would see.
+    /// Informational; per function, the number of vectors.
+    pub extended: BTreeMap<u32, usize>,
 }
 
 fn expected_pop(p: &Pure) -> u32 {
@@ -104,13 +120,25 @@ fn compare(
         Err(m) => format!("panic: {m}"),
     };
     let (eax, edx, f32b, f64b, popped) = match exe {
-        Outcome::Fault(f) => {
-            let k = if rust.is_err() {
-                Kind::BothFailed
-            } else {
-                Kind::ExeFaultOnly
+        Outcome::Fault {
+            text,
+            name,
+            read_at,
+        } => {
+            let k = match rust {
+                Ok(_) => Kind::ExeFaultOnly,
+                Err(m) => match (read_at, unmapped_read(m)) {
+                    (Some(a), Some(b)) if *a == b => Kind::BothFailed,
+                    // The engine stopped at memory it never maps; the exe read
+                    // that address (mapped in nv-call's process) and failed later.
+                    (_, Some(b)) if !IMAGE.contains(&b) => Kind::OutOfImageRead,
+                    _ if name == "integer_divide_by_zero" && m.contains("divide by zero") => {
+                        Kind::BothFailed
+                    }
+                    _ => Kind::FaultMismatch,
+                },
             };
-            return (format!("fault {f}"), rust_text, k);
+            return (format!("fault {text}"), rust_text, k);
         }
         Outcome::Value {
             eax,
@@ -212,6 +240,44 @@ fn compare(
     (exe_text, rust_text, kind)
 }
 
+/// `Engine::with_exe` without rereading the file: the checked data sections
+/// and imports parsed once, mapped into a new engine per vector (the same
+/// steps as `engine::exe::map_data_sections` and `Engine::with_exe`).
+struct FreshEngine {
+    sections: Vec<(u32, u32, Vec<u8>)>,
+    imports: Vec<engine::exe::Import>,
+}
+
+impl FreshEngine {
+    fn load(exe: &Path) -> Result<Self, String> {
+        let file = fs::read(exe).map_err(|e| format!("{}: {e}", exe.display()))?;
+        let secs = engine::exe::checked_sections(exe, &file)?;
+        let mut sections = Vec::new();
+        for (name, va, vsize, _) in engine::exe::SECTIONS {
+            let s = secs
+                .iter()
+                .find(|s| s.name == name)
+                .ok_or_else(|| format!("no {name} section"))?;
+            let n = s.raw.len().min(vsize as usize);
+            sections.push((va, vsize.max(s.raw.len() as u32), s.raw[..n].to_vec()));
+        }
+        Ok(FreshEngine {
+            sections,
+            imports: engine::exe::imports(&file)?,
+        })
+    }
+
+    fn make(&self) -> Engine {
+        let mut e = Engine::new();
+        for (va, len, bytes) in &self.sections {
+            e.mem.map(*va, *len);
+            e.mem.write(*va, bytes);
+        }
+        e.register_imports(&self.imports);
+        e
+    }
+}
+
 fn panic_text(p: Box<dyn std::any::Any + Send>) -> String {
     if let Some(s) = p.downcast_ref::<&str>() {
         s.to_string()
@@ -250,7 +316,7 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
     let mut lines = String::new();
     let mut cases: Vec<(&Pure, Vec<Vec<Val>>)> = Vec::new();
     for p in &runnable {
-        let ins = vectors::inputs(&p.params, o.per_function, p.addr as u64);
+        let ins = vectors::inputs(&p.params, o.per_function, p.addr as u64, &p.consts);
         for (i, args) in ins.iter().enumerate() {
             let _ = writeln!(
                 lines,
@@ -281,7 +347,9 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
         .filter_map(vectors::parse_result)
         .collect();
 
-    // The engine side, one fresh engine per function.
+    // The engine side: every vector on a fresh copy of one template engine,
+    // as nv-call restores the image's writable memory before every vector.
+    let template = FreshEngine::load(&o.exe)?;
     let quiet = panic::take_hook();
     panic::set_hook(Box::new(|_| {}));
     let mut report = Report {
@@ -290,24 +358,47 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
         counts: BTreeMap::new(),
         failures: Vec::new(),
         failing_functions: BTreeMap::new(),
+        varying: 0,
+        constant: Vec::new(),
+        extended: BTreeMap::new(),
     };
     for (p, ins) in &cases {
-        let mut e = match Engine::with_exe(&o.exe) {
-            Ok(e) => e,
-            Err(err) => {
-                panic::set_hook(quiet);
-                return Err(err);
-            }
-        };
         let want_pop = expected_pop(p);
+        let mut distinct = std::collections::BTreeSet::new();
         for (i, args) in ins.iter().enumerate() {
             let id = format!("{:08x}_{i}", p.addr);
             let mut words = Vec::new();
             for v in args {
                 v.put(&mut words);
             }
+            let mut e = template.make();
             let rust = panic::catch_unwind(AssertUnwindSafe(|| e.call(p.addr, &words)))
                 .map_err(panic_text);
+            if let Some(Outcome::Value {
+                eax,
+                edx,
+                st0_f32,
+                st0_f64,
+                ..
+            }) = exe_results.get(&id)
+            {
+                let key = match p.ret {
+                    Ty::F32 => st0_f32.map(u64::from).unwrap_or(u64::MAX),
+                    Ty::F64 => st0_f64.unwrap_or(u64::MAX),
+                    Ty::Bool => u64::from(*eax as u8 != 0),
+                    Ty::U8 | Ty::I8 => u64::from(*eax as u8),
+                    Ty::U16 | Ty::I16 => u64::from(*eax as u16),
+                    Ty::U64 => u64::from(*eax) | u64::from(*edx) << 32,
+                    _ => u64::from(*eax),
+                };
+                distinct.insert(key);
+                if let (Ty::F32, Some(f), Some(d)) = (p.ret, st0_f32, st0_f64) {
+                    let (f, d) = (f32::from_bits(*f), f64::from_bits(*d));
+                    if !d.is_nan() && f as f64 != d {
+                        *report.extended.entry(p.addr).or_insert(0) += 1;
+                    }
+                }
+            }
             let Some(exe) = exe_results.get(&id) else {
                 *report.counts.entry(Kind::Mismatch).or_insert(0) += 1;
                 report.failures.push((
@@ -337,6 +428,11 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
                 ));
             }
         }
+        if distinct.len() >= 2 {
+            report.varying += 1;
+        } else {
+            report.constant.push(p.addr);
+        }
     }
     panic::set_hook(quiet);
 
@@ -346,6 +442,36 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
     }
     let rep = o.out_dir.join("failures.tsv");
     fs::write(&rep, tsv).map_err(|e| format!("{}: {e}", rep.display()))?;
+
+    // Coverage notes: which matches only show a constant, and which f32
+    // results were wider than a float in ST0.
+    let mut notes = String::from(
+        "address	unit	note
+",
+    );
+    let unit = |a: u32| {
+        cases
+            .iter()
+            .find(|(p, _)| p.addr == a)
+            .map(|(p, _)| p.unit.clone())
+            .unwrap_or_default()
+    };
+    for a in &report.constant {
+        let _ = writeln!(
+            notes,
+            "{a:08x}	{}	constant or fault-only exe results",
+            unit(*a)
+        );
+    }
+    for (a, n) in &report.extended {
+        let _ = writeln!(
+            notes,
+            "{a:08x}	{}	f32 result wider than a float in {n} vector(s)",
+            unit(*a)
+        );
+    }
+    let path = o.out_dir.join("coverage.tsv");
+    fs::write(&path, notes).map_err(|e| format!("{}: {e}", path.display()))?;
     Ok(report)
 }
 
@@ -394,13 +520,39 @@ mod tests {
             compare(Ty::U32, &val(5, None), &ok(5, 0.0), 4).2,
             Kind::Convention
         );
-        let fault = Outcome::Fault("{}".into());
+        let fault = |at: u32| Outcome::Fault {
+            text: "{}".into(),
+            name: "access_violation".into(),
+            read_at: Some(at),
+        };
+        let read = |at: &str| Err::<Ret, String>(format!("read of unmapped memory at {at}"));
         assert_eq!(
-            compare(Ty::U32, &fault, &Err("x".into()), 0).2,
-            Kind::BothFailed
+            compare(Ty::U32, &fault(0x021f_91c8), &read("021f91c8"), 0).2,
+            Kind::BothFailed,
+            "same address"
         );
         assert_eq!(
-            compare(Ty::U32, &fault, &ok(1, 0.0), 0).2,
+            compare(Ty::U32, &fault(0x0400_0000), &read("011f91c8"), 0).2,
+            Kind::FaultMismatch,
+            "engine stopped inside its mapped data, the exe elsewhere"
+        );
+        assert_eq!(
+            compare(Ty::U32, &fault(0x0400_0000), &read("00b89904"), 0).2,
+            Kind::OutOfImageRead,
+            "engine stopped at .text, which it doesn't map"
+        );
+        assert_eq!(
+            compare(
+                Ty::U32,
+                &fault(0x0400_0000),
+                &Err("open function 00401000".into()),
+                0
+            )
+            .2,
+            Kind::FaultMismatch
+        );
+        assert_eq!(
+            compare(Ty::U32, &fault(0x0400_0000), &ok(1, 0.0), 0).2,
             Kind::ExeFaultOnly
         );
         let oob = Err::<Ret, String>("read of unmapped memory at 3054e150".into());

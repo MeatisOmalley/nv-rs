@@ -18,6 +18,10 @@ pub struct Facts {
     pub reg_in: Vec<String>,
     /// Stack argument bytes the body reads (lower bound); -1 unknown.
     pub stack_args: i64,
+    /// Constants the body compares and computes with, as input tokens:
+    /// `i<decimal>`, `f<8 hex>` (float bits), `d<16 hex>` (double bits).
+    /// Empty when the table predates the `consts_*` columns.
+    pub consts: Vec<String>,
 }
 
 impl Facts {
@@ -70,6 +74,8 @@ pub fn parse(text: &str) -> Result<BTreeMap<u32, Facts>, String> {
         col("reg_in")?,
         col("stack_args")?,
     );
+    let c_ci = header.iter().position(|h| *h == "consts_int");
+    let c_cf = header.iter().position(|h| *h == "consts_float");
     let mut out = BTreeMap::new();
     for (n, l) in lines.enumerate() {
         let c: Vec<&str> = l.split('\t').collect();
@@ -114,6 +120,16 @@ pub fn parse(text: &str) -> Result<BTreeMap<u32, Facts>, String> {
                     })
                     .unwrap_or_default(),
                 stack_args: num(c_sa)?,
+                consts: {
+                    let field = |i: Option<usize>| -> Vec<&str> {
+                        i.and_then(|i| c.get(i))
+                            .map(|v| v.split(',').filter(|s| !s.is_empty()).collect())
+                            .unwrap_or_default()
+                    };
+                    let mut k: Vec<String> = field(c_ci).iter().map(|v| format!("i{v}")).collect();
+                    k.extend(field(c_cf).iter().map(|v| v.to_string()));
+                    k
+                },
             },
         );
     }

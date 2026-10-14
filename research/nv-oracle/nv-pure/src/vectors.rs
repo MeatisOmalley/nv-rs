@@ -136,10 +136,58 @@ const I32_EDGES: &[u32] = &[
     0x0040_0000,
 ];
 
+/// Rounding ties and float-to-integer conversion limits: x87 rounding
+/// (FISTP, round half to even), truncation (`_ftol2`) and range checks
+/// differ only here, and random values almost never land on them.
+const ROUNDING: &[f64] = &[
+    0.5,
+    -0.5,
+    1.5,
+    -1.5,
+    2.5,
+    -2.5,
+    255.5,
+    65535.5,
+    0.499_999_970_197_677_6, // largest float below 0.5
+    0.500_000_059_604_644_8, // smallest float above 0.5
+    -0.499_999_970_197_677_6,
+    4_194_304.5,
+    8_388_607.5,
+    8_388_608.0,      // 2^23
+    16_777_216.0,     // 2^24
+    2_147_483_520.0,  // largest float below 2^31
+    2_147_483_648.0,  // 2^31
+    -2_147_483_648.0, // -2^31
+    -2_147_483_904.0, // next float below -2^31
+    2_147_483_647.0,
+    4_294_967_296.0, // 2^32
+    1e10,
+    -1e10,
+];
+
 fn edges(ty: Ty) -> Vec<u64> {
-    match ty {
+    let mut v: Vec<u64> = match ty {
         Ty::F32 => F32_EDGES.iter().map(|&b| b as u64).collect(),
         Ty::F64 => F64_EDGES.to_vec(),
+        _ => Vec::new(),
+    };
+    let extra: Vec<u64> = match ty {
+        Ty::F32 => ROUNDING
+            .iter()
+            .map(|&x| u64::from((x as f32).to_bits()))
+            .collect(),
+        Ty::F64 => ROUNDING.iter().map(|&x| x.to_bits()).collect(),
+        _ => Vec::new(),
+    };
+    for b in extra {
+        if !v.contains(&b) {
+            v.push(b);
+        }
+    }
+    if !v.is_empty() {
+        return v;
+    }
+    match ty {
         Ty::Bool => vec![0, 1],
         Ty::U8 | Ty::I8 => vec![0, 1, 2, 0x7f, 0x80, 0xff, 0x10],
         Ty::U16 | Ty::I16 => vec![0, 1, 0x7fff, 0x8000, 0xffff, 0xff, 0x100],
@@ -176,10 +224,92 @@ fn random(ty: Ty, r: &mut Rng) -> u64 {
     }
 }
 
-/// Argument lists: first each parameter through its edge values with the
-/// others at a plain value (all of them, however many), then random lists up
-/// to `count` in total and at least 16.
-pub fn inputs(params: &[Ty], count: usize, seed: u64) -> Vec<Vec<Val>> {
+/// Boundary values from the function's own constants (`i<decimal>`,
+/// `f<float bits>`, `d<double bits>`, as `NvPurity.java` mines them): for an
+/// integer parameter c-1, c and c+1 of every integer constant; for a float
+/// parameter every float or double constant and its two neighbouring values
+/// in the parameter's type.
+fn boundaries(ty: Ty, consts: &[String]) -> Vec<u64> {
+    let mut out = Vec::new();
+    for t in consts {
+        let (kind, body) = t.split_at(1);
+        match (ty, kind) {
+            (Ty::Bool, _) => {}
+            (Ty::F32 | Ty::F64, "f" | "d") => {
+                let Ok(bits) = u64::from_str_radix(body, 16) else {
+                    continue;
+                };
+                let v = if kind == "f" {
+                    f32::from_bits(bits as u32) as f64
+                } else {
+                    f64::from_bits(bits)
+                };
+                if ty == Ty::F32 {
+                    let c = v as f32;
+                    out.extend([c, c.next_down(), c.next_up()].map(|x| u64::from(x.to_bits())));
+                } else {
+                    out.extend([v, v.next_down(), v.next_up()].map(f64::to_bits));
+                }
+            }
+            (Ty::F32 | Ty::F64, _) => {}
+            (_, "i") => {
+                let Ok(c) = body.parse::<i64>() else { continue };
+                let mask = match ty {
+                    Ty::U8 | Ty::I8 => 0xff,
+                    Ty::U16 | Ty::I16 => 0xffff,
+                    Ty::U64 => u64::MAX,
+                    _ => 0xffff_ffff,
+                };
+                out.extend([c - 1, c, c + 1].map(|v| v as u64 & mask));
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// A small set per type whose combinations across parameters matter: signed
+/// zeros against each other (min/max and `>` vs `>=` differ only there),
+/// equal operands, NaN and infinities on either side.
+fn specials(ty: Ty) -> Vec<u64> {
+    match ty {
+        Ty::F32 => [
+            0x0000_0000u32,
+            0x8000_0000,
+            0x3f80_0000,
+            0xbf80_0000,
+            0x3fc0_0000,
+            0x7fc0_0000,
+            0x7f80_0000,
+            0xff80_0000,
+        ]
+        .iter()
+        .map(|&b| u64::from(b))
+        .collect(),
+        Ty::F64 => vec![
+            0,
+            0x8000_0000_0000_0000,
+            0x3ff0_0000_0000_0000,
+            0xbff0_0000_0000_0000,
+            0x3ff8_0000_0000_0000,
+            0x7ff8_0000_0000_0000,
+            0x7ff0_0000_0000_0000,
+            0xfff0_0000_0000_0000,
+        ],
+        Ty::Bool => vec![0, 1],
+        Ty::U8 | Ty::I8 => vec![0, 1, 0xff],
+        Ty::U16 | Ty::I16 => vec![0, 1, 0xffff],
+        Ty::U64 => vec![0, 1, u64::MAX],
+        _ => vec![0, 1, 3, 0xffff_ffff, 0x8000_0000],
+    }
+}
+
+/// Argument lists: first each parameter through its edge values and the
+/// boundaries of the function's own constants, with the others at a plain
+/// value (all of them, however many); for two or three parameters, every
+/// combination of the per-type special values; then random lists up to
+/// `count` in total and at least 16.
+pub fn inputs(params: &[Ty], count: usize, seed: u64, consts: &[String]) -> Vec<Vec<Val>> {
     let mut r = Rng::new(seed);
     let plain = |t: Ty| -> u64 {
         match t {
@@ -194,7 +324,13 @@ pub fn inputs(params: &[Ty], count: usize, seed: u64) -> Vec<Vec<Val>> {
         return out;
     }
     for (i, &t) in params.iter().enumerate() {
-        for e in edges(t) {
+        let mut values = edges(t);
+        for b in boundaries(t, consts) {
+            if !values.contains(&b) {
+                values.push(b);
+            }
+        }
+        for e in values {
             let v = params
                 .iter()
                 .enumerate()
@@ -204,6 +340,36 @@ pub fn inputs(params: &[Ty], count: usize, seed: u64) -> Vec<Vec<Val>> {
                 })
                 .collect();
             out.push(v);
+        }
+    }
+    if (2..=3).contains(&params.len()) {
+        let sets: Vec<Vec<u64>> = params.iter().map(|&t| specials(t)).collect();
+        let mut idx = vec![0usize; params.len()];
+        loop {
+            let v: Vec<Val> = params
+                .iter()
+                .enumerate()
+                .map(|(j, &u)| Val {
+                    ty: u,
+                    bits: sets[j][idx[j]],
+                })
+                .collect();
+            if !out.contains(&v) {
+                out.push(v);
+            }
+            // odometer over the cartesian product
+            let mut k = 0;
+            while k < idx.len() {
+                idx[k] += 1;
+                if idx[k] < sets[k].len() {
+                    break;
+                }
+                idx[k] = 0;
+                k += 1;
+            }
+            if k == idx.len() {
+                break;
+            }
         }
     }
     let total = count.max(out.len() + 16);
@@ -255,7 +421,13 @@ pub enum Outcome {
         st0_f64: Option<u64>,
         popped: u32,
     },
-    Fault(String),
+    /// The exe raised an exception it did not handle. `read_at`: the address
+    /// of an access violation on a read; `name`: nv-call's exception name.
+    Fault {
+        text: String,
+        name: String,
+        read_at: Option<u32>,
+    },
 }
 
 fn hex_field(v: Option<&Value>) -> Option<u64> {
@@ -272,7 +444,25 @@ pub fn parse_result(line: &str) -> Option<(String, Outcome)> {
     let id = v.get("id")?.as_str()?.to_string();
     if let Some(f) = v.get("fault") {
         if f.is_object() {
-            return Some((id, Outcome::Fault(f.show())));
+            let name = f
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let read = f.get("access").and_then(Value::as_str) == Some("read");
+            let read_at = if name == "access_violation" && read {
+                hex_field(f.get("address")).map(|a| a as u32)
+            } else {
+                None
+            };
+            return Some((
+                id,
+                Outcome::Fault {
+                    text: f.show(),
+                    name,
+                    read_at,
+                },
+            ));
         }
     }
     let regs = v.get("regs")?;
@@ -300,10 +490,10 @@ mod tests {
 
     #[test]
     fn deterministic_and_covering() {
-        let a = inputs(&[Ty::F32, Ty::I32], 64, 0x0040_1000);
-        let b = inputs(&[Ty::F32, Ty::I32], 64, 0x0040_1000);
+        let a = inputs(&[Ty::F32, Ty::I32], 64, 0x0040_1000, &[]);
+        let b = inputs(&[Ty::F32, Ty::I32], 64, 0x0040_1000, &[]);
         assert_eq!(a, b);
-        assert_eq!(a.len(), 64);
+        assert!(a.len() >= 64);
         assert!(
             a.iter().any(|v| v[0].bits == 0x7f80_0001),
             "sNaN edge present"
@@ -331,6 +521,51 @@ mod tests {
     }
 
     #[test]
+    fn combinations_and_ties() {
+        let all = inputs(&[Ty::F32, Ty::F32], 64, 7, &[]);
+        // +0 against -0 in both orders (min/max with > vs >= differ only there)
+        assert!(all
+            .iter()
+            .any(|v| v[0].bits == 0 && v[1].bits == 0x8000_0000));
+        assert!(all
+            .iter()
+            .any(|v| v[0].bits == 0x8000_0000 && v[1].bits == 0));
+        // equal operands
+        assert!(all
+            .iter()
+            .any(|v| v[0].bits == 0x3f80_0000 && v[1].bits == 0x3f80_0000));
+        // rounding ties reach a one-parameter function
+        let one = inputs(&[Ty::F32], 16, 7, &[]);
+        assert!(one.iter().any(|v| v[0].bits == u64::from(1.5f32.to_bits())));
+        assert!(one
+            .iter()
+            .any(|v| v[0].bits == u64::from((-0.5f32).to_bits())));
+    }
+
+    #[test]
+    fn constant_boundaries() {
+        // TESFurniture::IsSitMarker compares with 10, 20 and 26
+        let k: Vec<String> = ["i10", "i20", "i26"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let b = boundaries(Ty::U32, &k);
+        for v in [9, 10, 11, 19, 20, 21, 25, 26, 27] {
+            assert!(b.contains(&v), "{v}");
+        }
+        let all = inputs(&[Ty::U32], 64, 1, &k);
+        assert!(
+            all.iter().any(|v| v[0].bits == 26),
+            "boundary reaches the input list"
+        );
+        // a double 1.0 constant gives 1.0f and its float neighbours for an f32 parameter
+        let f = boundaries(Ty::F32, &["d3ff0000000000000".to_string()]);
+        assert_eq!(f, vec![0x3f80_0000, 0x3f7f_ffff, 0x3f80_0001]);
+        // -1 as a byte
+        assert!(boundaries(Ty::U8, &["i0".to_string()]).contains(&0xff));
+    }
+
+    #[test]
     fn result_lines() {
         let ok = r#"{"type":"result","id":"a_1","fault":null,"regs":{"eax":"0x00000006","edx":"0x00000000","st0":null,"callee_popped":0},"value":{"u32":6}}"#;
         assert_eq!(
@@ -346,7 +581,16 @@ mod tests {
                 }
             ))
         );
-        let f = r#"{"type":"result","id":"a_2","fault":{"kind":"exception","name":"access_violation"},"regs":null}"#;
-        assert!(matches!(parse_result(f), Some((_, Outcome::Fault(_)))));
+        let f = r#"{"type":"result","id":"a_2","fault":{"kind":"exception","name":"access_violation","address":"0x021F91C8","access":"read"},"regs":null}"#;
+        assert!(matches!(
+            parse_result(f),
+            Some((
+                _,
+                Outcome::Fault {
+                    read_at: Some(0x021f_91c8),
+                    ..
+                }
+            ))
+        ));
     }
 }

@@ -136,6 +136,22 @@ fn cmd_check(args: &[String]) -> Result<ExitCode, String> {
     for (k, n) in &r.counts {
         println!("  {k:?}: {n}");
     }
+    println!(
+        "  functions with varying exe results {}, constant or fault-only {}",
+        r.varying,
+        r.constant.len()
+    );
+    if !r.extended.is_empty() {
+        let list: Vec<String> = r
+            .extended
+            .iter()
+            .map(|(a, n)| format!("{a:08x} ({n})"))
+            .collect();
+        println!(
+            "  note: f32 results wider than a float in ST0 (informational): {}",
+            list.join(", ")
+        );
+    }
     for (a, why) in r.skipped.iter().take(10) {
         println!("  skipped {a:08x}: {why}");
     }

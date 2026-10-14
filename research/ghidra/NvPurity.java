@@ -43,6 +43,11 @@
 //   stack_args  bytes of stack arguments the body reads, measured from
 //               [EBP+8+n] operands (a lower bound: an argument the body never
 //               reads is not counted); -1 without an EBP frame.
+//   consts_int  immediate operands that are not addresses or stack
+//               adjustments (CMP EAX,0x14 -> 20), signed decimal, ','.
+//   consts_float the values x87/SSE instructions load from absolute
+//               addresses: f<8 hex> (dword) or d<16 hex> (qword), ','.
+//               Both are test inputs for the oracle check (boundaries).
 //
 // A function is pure for the oracle check when it and every function it
 // calls (transitively) has indirect = imports = w_global = w_pointer =
@@ -108,7 +113,8 @@ public class NvPurity extends GhidraScript {
 
         List<String> lines = new ArrayList<>();
         lines.add("entry\tsize\tret_pop\tebp_frame\tcalls\ttail_calls\tindirect\timports\t"
-            + "w_stack\tw_global\tw_pointer\tw_implicit\tr_pointer\tfs\treg_in\tstack_args");
+            + "w_stack\tw_global\tw_pointer\tw_implicit\tr_pointer\tfs\treg_in\tstack_args\t"
+            + "consts_int\tconsts_float");
         for (Function f : fm.getFunctions(true)) {
             monitor.checkCancelled();
             if (f.isExternal()) {
@@ -138,10 +144,13 @@ public class NvPurity extends GhidraScript {
         List<String> tails = new ArrayList<>();
         int indirect = 0, imports = 0;
         int wStack = 0, wGlobal = 0, wPointer = 0, wImplicit = 0, rPointer = 0, fs = 0;
+        java.util.LinkedHashSet<Long> intConsts = new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<String> floatConsts = new java.util.LinkedHashSet<>();
 
         for (Instruction ins : listing.getInstructions(body, true)) {
             String mnem = ins.getMnemonicString().toUpperCase();
             FlowType ft = ins.getFlowType();
+            collectConstants(ins, mnem, intConsts, floatConsts);
 
             if (mnem.startsWith("RET")) {
                 long pop = 0;
@@ -247,7 +256,102 @@ public class NvPurity extends GhidraScript {
             + (ebpFrame ? 1 : 0) + "\t" + String.join(",", calls) + "\t" + String.join(",", tails) + "\t"
             + indirect + "\t" + imports + "\t" + wStack + "\t" + wGlobal + "\t" + wPointer + "\t"
             + wImplicit + "\t" + rPointer + "\t" + fs + "\t" + registersIn(listing, f.getEntryPoint(), body)
-            + "\t" + stackArgBytes(listing, body, ebpFrame);
+            + "\t" + stackArgBytes(listing, body, ebpFrame)
+            + "\t" + joinLongs(intConsts) + "\t" + String.join(",", floatConsts);
+    }
+
+    private static final int MAX_CONSTS = 32;
+
+    private static String joinLongs(java.util.Collection<Long> values) {
+        List<String> out = new ArrayList<>();
+        for (Long v : values) {
+            out.add(Long.toString(v));
+        }
+        return String.join(",", out);
+    }
+
+    /**
+     * The constants a function compares and computes with, as test inputs for the oracle check:
+     * immediate operands that are not addresses or stack adjustments (CMP EAX,0x14; AND ECX,0x1FF),
+     * and the float/double values that x87 and SSE instructions load from absolute addresses
+     * (FCOMP double ptr [0x01012060] -> its 8 bytes as a double). Floats are written f&lt;8 hex
+     * digits&gt;, doubles d&lt;16 hex digits&gt;; at most 32 of each kind.
+     */
+    private void collectConstants(Instruction ins, String mnem, java.util.Set<Long> ints,
+            java.util.Set<String> floats) {
+        // ADD/SUB ESP,n and the like: ESP or EBP as a bare register operand (not inside a
+        // memory operand such as CMP dword ptr [EBP+0x8],0xa, whose 0xa is wanted).
+        boolean stackAdjust = false;
+        for (int i = 0; i < ins.getNumOperands(); i++) {
+            if (isBracketed(ins, i)) {
+                continue;
+            }
+            for (Object o : ins.getOpObjects(i)) {
+                if (o instanceof Register) {
+                    String n = ((Register) o).getName().toUpperCase();
+                    if (n.equals("ESP") || n.equals("EBP")) {
+                        stackAdjust = true;
+                    }
+                }
+            }
+        }
+        boolean x87 = mnem.startsWith("F");
+        boolean sse = mnem.endsWith("SS") || mnem.endsWith("SD") || mnem.startsWith("COMIS")
+            || mnem.startsWith("UCOMIS") || mnem.startsWith("CVT");
+        for (int i = 0; i < ins.getNumOperands(); i++) {
+            String rep = ins.getDefaultOperandRepresentation(i);
+            if (!isBracketed(ins, i)) {
+                if (stackAdjust || mnem.startsWith("RET") || ins.getFlowType().isCall()
+                    || ins.getFlowType().isJump()) {
+                    continue;
+                }
+                for (Object o : ins.getOpObjects(i)) {
+                    if (o instanceof Scalar) {
+                        long v = ((Scalar) o).getSignedValue();
+                        if (Math.abs(v) < imageBase && ints.size() < MAX_CONSTS) {
+                            ints.add(v);
+                        }
+                    }
+                }
+                continue;
+            }
+            if (!(x87 || sse)) {
+                continue;
+            }
+            // Ghidra writes x87 memory operands as "float ptr"/"double ptr", SSE ones as
+            // "dword ptr"/"qword ptr"; 80-bit ("float10") operands are skipped.
+            int size = rep.startsWith("dword ptr") || rep.startsWith("float ptr") ? 4
+                : rep.startsWith("qword ptr") || rep.startsWith("double ptr") ? 8 : 0;
+            if (size == 0) {
+                continue;
+            }
+            Long abs = null;
+            boolean indexed = false;
+            for (Object o : ins.getOpObjects(i)) {
+                if (o instanceof Register) {
+                    indexed = true;
+                }
+                else if (o instanceof Scalar && ((Scalar) o).getUnsignedValue() >= imageBase) {
+                    abs = ((Scalar) o).getUnsignedValue();
+                }
+                else if (o instanceof Address && ((Address) o).getOffset() >= imageBase) {
+                    abs = ((Address) o).getOffset();
+                }
+            }
+            if (abs == null || indexed || floats.size() >= MAX_CONSTS) {
+                continue;
+            }
+            Address a = toAddr(abs);
+            if (!NvCommon.inInitializedMemory(currentProgram, a)) {
+                continue;
+            }
+            byte[] b = NvCommon.readBytes(currentProgram, a, size);
+            if (b == null || b.length != size) {
+                continue;
+            }
+            long bits = NvCommon.le(b, 0, size);
+            floats.add(size == 4 ? String.format("f%08x", bits) : String.format("d%016x", bits));
+        }
     }
 
     /**

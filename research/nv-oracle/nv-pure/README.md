@@ -45,16 +45,28 @@ registered in the engine at the time of the run.
 
 ## Inputs
 
-Per parameter, every edge value with the other parameters at a plain value, then
-seeded random lists up to `--count` (default 64, at least 16 random):
-
-- `f32`/`f64`: ±0, ±1, 0.5, 2, 0.001, 1000, π, -π/2, 360, 0.1, ±1e30, max,
-  smallest normal, smallest and largest denormal, ±inf, ±qNaN, qNaN with payload,
-  sNaN; random values are half raw bit patterns (any class), half in ±1000.
-- integers: 0, 1, -1, 2, 3, 7, INT_MAX, INT_MIN, 0xff, 0x100, 0xffff, 0x10000,
-  0xffffff00, 0x400000; random values mostly small, sometimes any pattern.
-- `u8`/`u16`/`bool`: their own edges, passed as the zero- or sign-extended word
-  the uniform form uses.
+1. **Per parameter**, every value below with the other parameters at a plain
+   value (1.5 or 3):
+   - `f32`/`f64`: ±0, ±1, 0.5, 2, 0.001, 1000, π, -π/2, 360, 0.1, ±1e30, max,
+     smallest normal, smallest and largest denormal, ±inf, ±qNaN, qNaN with
+     payload, sNaN; rounding ties and conversion limits (±0.5, ±1.5, ±2.5, 255.5,
+     65535.5, the floats on either side of 0.5, 2^23, 2^24, the floats around
+     ±2^31, 2^32, ±1e10).
+   - integers: 0, 1, -1, 2, 3, 7, INT_MAX, INT_MIN, 0xff, 0x100, 0xffff, 0x10000,
+     0xffffff00, 0x400000.
+   - `u8`/`u16`/`bool`: their own edges, passed as the zero- or sign-extended word
+     the uniform form uses.
+   - **The function's own constants** (NvPurity mines them, `consts` in
+     `pure.tsv`, callees' included): c-1, c and c+1 of every immediate it compares
+     or computes with (`CMP EAX,0x14`), and every float/double it loads from
+     memory with its two neighbouring values. Branch boundaries that no generic
+     list hits come from here.
+2. **For two or three parameters, every combination** of a small special set per
+   type (floats: ±0, ±1, 1.5, qNaN, ±inf; integers 0, 1, 3, -1, INT_MIN): signed
+   zeros against each other, equal operands, NaN on either side.
+3. **Seeded random lists** up to `--count` (default 64, at least 16): floats half
+   raw bit patterns (any class), half in ±1000; integers mostly small, sometimes
+   any pattern.
 
 The FPU runs with nv-call's defaults (control word 0x027F: 53-bit precision,
 round to nearest; MXCSR 0x1F80), matching the engine's "compute in f64, round at
@@ -65,11 +77,38 @@ float stores" rule.
 | Kind | Meaning | Fails the check |
 | --- | --- | --- |
 | `Match` | Same bits (`bool`: AL zero/non-zero; `u8`/`u16`: low byte/word; floats: ST0 rounded to the type). | no |
-| `BothFailed` | The exe faulted and the engine panicked: inconclusive. | no |
+| `BothFailed` | Both failed the same way: the exe's access violation and the engine's unmapped read at the same address (or both divided by zero). | no |
+| `OutOfImageRead` | The engine stopped at memory it never maps (outside `.rdata`..`CONST`, e.g. a random table index landing in `.text`), which nv-call's process happened to have mapped. | no |
 | `Mismatch` | Different results. | yes |
 | `NanBits` | Both NaN, different sign or payload. | yes |
 | `ExeFaultOnly` / `RustPanicOnly` | One side failed. | yes |
+| `FaultMismatch` | Both failed, but at different addresses (inside the engine's mapped data) or in different ways. | yes |
 | `Convention` | The exe popped a different number of bytes than the listed convention: the list is wrong, not the translation. | yes |
+
+The engine side runs every vector on a fresh engine (the exe's data sections
+mapped anew), as nv-call restores the image's writable memory before every
+vector, so no vector sees another's state.
+
+The summary also prints how many functions give **varying** exe results over
+their inputs. A function whose results are all the same value (no parameters, or
+a result that depends on globals the game fills at run time, zero in the file) is
+only checked for that one value; they are listed in `coverage.tsv` in the output
+folder.
+
+## Validation
+
+- **Mutation test.** Five realistic bugs planted in translations at once
+  (an off-by-one range `10..=20` → `10..20`; `>` → `>=` in a float min, where
+  only +0/-0 tells them apart; `>` → `>=` in an epsilon compare; a member offset
+  +8 → +0xc; round-half-to-even → round-half-down): all five fail the check. Two
+  of them were missed before the constant boundaries, the cross-parameter
+  combinations and the rounding ties were added, which is why those exist.
+- **Determinism.** Two runs give the same counts and the same failures; only
+  which out-of-range reads fault can vary with nv-call's process layout, and
+  those are never failures.
+- **Non-vacuity.** 108 of 324 functions vary with their inputs and match bit for
+  bit, which cannot happen with arguments in the wrong places; the `Convention`
+  check (stack bytes the exe actually popped) passes for every listed function.
 
 ## Running it
 
