@@ -97,11 +97,28 @@ folder.
 
 ## Validation
 
-- **Mutation test.** Five realistic bugs planted in translations at once
-  (an off-by-one range `10..=20` → `10..20`; `>` → `>=` in a float min, where
-  only +0/-0 tells them apart; `>` → `>=` in an epsilon compare; a member offset
-  +8 → +0xc; round-half-to-even → round-half-down): all five fail the check. Two
-  of them were missed before the constant boundaries, the cross-parameter
+- **Mutation test**, fifteen realistic bugs planted in translations, one per
+  function, in two rounds:
+
+  | Genre | Planted bug | Caught |
+  | --- | --- | --- |
+  | range boundary | `10..=20` → `10..20` (TESFurniture::IsSitMarker) | yes, only by the mined constant 20 |
+  | float compare strictness | `>` → `>=` in a float min (only +0/-0 differ) | yes, by the cross-parameter ±0 pair |
+  | compare in a bool result | `>` → `>=` in an epsilon compare | yes |
+  | wrong offset/constant | member +8 → +0xc | yes |
+  | rounding mode | round-half-to-even → half-down | yes, by the rounding ties |
+  | argument order | `second / first` → `first / second` | yes |
+  | signed vs unsigned | `u32` max compared as `i32` | yes |
+  | shift kind | arithmetic `>> 5` → logical | yes |
+  | sign extension | `y as u16` → `y as i32` in a packed key | yes |
+  | mask width | `& 0xffffff00` → `& 0x0000ff00` | yes |
+  | float precision | intermediate `float` rounding dropped | yes |
+  | integer overflow | wrapping `i8` add → saturating | yes |
+  | float→int overflow | NaN/range guard deleted | yes |
+  | wrong callee | `_ftol2` (truncate) → the rounding helper | yes |
+  | NaN quieting | `FLD`/`FSTP` sNaN quieting dropped from an `f32` result | **no**, see limits |
+
+  The first two were missed until the constant boundaries, the cross-parameter
   combinations and the rounding ties were added, which is why those exist.
 - **Determinism.** Two runs give the same counts and the same failures; only
   which out-of-range reads fault can vary with nv-call's process layout, and
@@ -109,6 +126,25 @@ folder.
 - **Non-vacuity.** 108 of 324 functions vary with their inputs and match bit for
   bit, which cannot happen with arguments in the wrong places; the `Convention`
   check (stack bytes the exe actually popped) passes for every listed function.
+
+## Known limits
+
+- **sNaN quieting in `f32` results is invisible.** The uniform form returns
+  floats as `Ret::st0: f64`, and `f32 as f64` quiets a signalling NaN on x86-64,
+  so a translation that forgets the `FLD`/`FSTP` quieting reads back the same
+  quiet NaN as the exe. A Rust caller of the typed function would still see the
+  sNaN. Fix: carry the raw `f32` bits in `Ret`. (`f64` results are not
+  affected.)
+- **Only pure functions with scalar arguments** (335 of 16,311 translations).
+  Functions that read through pointer arguments need buffers; ones that touch
+  globals need state.
+- **Runtime-initialised globals are zero.** Neither nv-call nor the engine runs
+  the CRT's static initialisers, so a function reading a table the game fills at
+  start-up (the 512-entry sine tables) returns 0 on both sides; such matches are
+  listed in `coverage.tsv`.
+- **One FPU mode.** Vectors run with control word 0x027F (53-bit), the engine's
+  model; results that depend on the game thread's actual precision mode are not
+  compared across modes.
 
 ## Running it
 
