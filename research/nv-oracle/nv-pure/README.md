@@ -31,7 +31,8 @@ A translation is on the list when all of these hold:
   (TLS, SEH frames);
 - its arguments and result are scalars (`u8`..`u64`, `bool`, `f32`, `f64`), and
   neither it nor its callees read through a pointer (so no object has to be built
-  for it);
+  for it); **or** (pointer tier, phase 1 of #193) it takes pointer arguments that
+  are only read, at offsets the data flow pins down (see below);
 - the calling convention follows from the exe and agrees with the signature:
   ECX/EDX read on entry (thiscall, fastcall), the `RET n` size (stdcall/thiscall
   pop exactly the stack words the signature leaves), and the stack-argument bytes
@@ -42,6 +43,29 @@ A translation is on the list when all of these hold:
 
 `check` also skips a listed function when it or one of its callees is not
 registered in the engine at the time of the run.
+
+### Pointer arguments (phase 1: read only)
+
+`NvPurity.java` follows each input (ECX, EDX, each stack argument) through the
+decompiler's data flow (copies, casts, constant offsets, merges) to every LOAD and
+STORE it reaches, and writes per input the offsets and sizes read and stored, pointer
+fields that are dereferenced, calls it is passed to and whether it escapes
+(`arg_access`), plus the LOADs/STOREs no input explains (`untracked_loads`,
+`untracked_stores`). A function with pointer parameters is listed when:
+
+- every pointer parameter (mapped to its exe input through the calling convention)
+  is only read, at known offsets: no unknown offset, no dereferenced pointer field
+  (that needs nested buffers), not passed to a callee, not stored;
+- nothing else is read or stored through a pointer (`untracked_* = 0`), and its
+  callees read through no pointer;
+- no parameter the Rust signature types as a scalar is used as a pointer by the exe.
+
+Each pointer parameter gets a buffer (`buffers` in `pure.tsv`:
+`param:size:bias:off.size;...`): big enough for every field read plus slack, with a
+bias for negative offsets. Both sides place the buffers in nv-call's arena at
+0x30000000, 16-byte aligned in order, the engine with `Mem::map`; before and after
+every vector the engine heap's top must be below the arena, and nv-call's header
+must report its arena there, or the run stops with an error.
 
 ## Inputs
 
@@ -72,6 +96,14 @@ The FPU runs with nv-call's defaults (control word 0x027F: 53-bit precision,
 round to nearest; MXCSR 0x1F80), matching the engine's "compute in f64, round at
 float stores" rule.
 
+4. **Buffer contents** (pointer tier), each paired with plain scalars and then
+   with the scalar lists above: all zero, all 0xff, two seeded random fills, and
+   structured fills where every field the exe reads takes the values of its pool
+   (typed edges by size, the function's constants, and for 4-byte fields the
+   pointer arguments' own values, so `this->x == other` can be true), first
+   shifted per field, then in lockstep (all fields the same value, so fields can
+   equal each other).
+
 ## Verdicts
 
 | Kind | Meaning | Fails the check |
@@ -84,6 +116,15 @@ float stores" rule.
 | `ExeFaultOnly` / `RustPanicOnly` | One side failed. | yes |
 | `FaultMismatch` | Both failed, but at different addresses (inside the engine's mapped data) or in different ways. | yes |
 | `Convention` | The exe popped a different number of bytes than the listed convention: the list is wrong, not the translation. | yes |
+| `BufferMismatch` | Same result, but a buffer differs after the call (one side stored where the other didn't). | yes |
+| `ExeTimeout` | The exe did not finish the vector within `--exe-timeout` (default 10 s; typically a loop over a count taken from a fuzzed field). nv-call is stopped and restarted after it; not run on the engine side. | no |
+| `ExeSlow` | The exe took over `--slow-ms` (default 1000 ms); not run on the engine side, where a correct translation may take much longer. | no |
+| `ExeCrash` | nv-call's process ended on the vector (an exception outside the harness's reach); restarted after it. | no |
+
+All three are listed in `coverage.tsv`. The engine side runs on a worker thread under
+a watchdog: one vector running past `--rust-timeout` (default 120 s) on a vector the
+exe finished quickly stops the check with an error naming the function and inputs,
+since a translation that loops where the exe returns is itself a finding.
 
 The engine side runs every vector on a fresh engine (the exe's data sections
 mapped anew), as nv-call restores the image's writable memory before every
@@ -127,6 +168,20 @@ folder.
   bit, which cannot happen with arguments in the wrong places; the `Convention`
   check (stack bytes the exe actually popped) passes for every listed function.
 
+- **Pointer-tier mutation test**, nine bugs planted in pointer code:
+
+  | Genre | Planted bug | Caught |
+  | --- | --- | --- |
+  | wrong field offset | `this+4` → `this+5` | yes |
+  | wrong field width | a `u32` flag field read as `u8` | yes |
+  | lost sign extension | `as i8 as i32` → `as i32` on a field | yes |
+  | lost sign extension in address math | signed byte offset added unsigned | yes |
+  | wrong struct | `plane+12` → `point+12` | yes |
+  | wrong flag bit | `& 0x20` → `& 0x10` | yes |
+  | float field read as integer | `f32` → `u32` read | yes |
+  | spurious write | an extra store into `this` | yes (`BufferMismatch`) |
+  | swapped pointer comparisons | two `this->field == other` tests reordered | yes, after pointer values joined the field pools and lockstep fills were added |
+
 ## Known limits
 
 - **sNaN quieting in `f32` results is invisible.** The uniform form returns
@@ -135,9 +190,9 @@ folder.
   quiet NaN as the exe. A Rust caller of the typed function would still see the
   sNaN. Fix: carry the raw `f32` bits in `Ret`. (`f64` results are not
   affected.)
-- **Only pure functions with scalar arguments** (335 of 16,311 translations).
-  Functions that read through pointer arguments need buffers; ones that touch
-  globals need state.
+- **Only pure functions with scalar arguments or read-only pointer arguments.**
+  Stores through arguments (out-parameters) are phase 2 of #193; dereferenced
+  pointer fields need nested buffers; functions that touch globals need state.
 - **Runtime-initialised globals are zero.** Neither nv-call nor the engine runs
   the CRT's static initialisers, so a function reading a table the game fills at
   start-up (the 512-entry sine tables) returns 0 on both sides; such matches are
