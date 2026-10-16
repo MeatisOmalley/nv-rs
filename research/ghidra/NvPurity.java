@@ -408,82 +408,126 @@ public class NvPurity extends GhidraScript {
                 }
             }
         }
-        java.util.Set<ghidra.program.model.pcode.Varnode> loadedFromArg = new java.util.HashSet<>();
-        java.util.Map<ghidra.program.model.pcode.Varnode, String> loadedAt = new java.util.HashMap<>();
+        // Owner and offset of every varnode derived from an input, to a fixed point. A merge
+        // (MULTIEQUAL) keeps a known offset only when all its inputs come from the same input at
+        // the same offset: `p = arg; while (..) p = p->next;` merges the argument with a value
+        // loaded through it, so loads through p are not loads of the argument at a known offset.
         int guard = 0;
-        while (!work.isEmpty() && guard++ < 100_000) {
-            ghidra.program.model.pcode.Varnode vn = work.poll();
-            String name = owner.get(vn);
-            Long o = offset.get(vn);
-            java.util.Iterator<ghidra.program.model.pcode.PcodeOp> ds = vn.getDescendants();
-            while (ds.hasNext()) {
-                ghidra.program.model.pcode.PcodeOp d = ds.next();
-                ghidra.program.model.pcode.Varnode outV = d.getOutput();
-                switch (d.getOpcode()) {
-                    case PcodeOp.COPY:
-                    case PcodeOp.CAST:
-                    case PcodeOp.MULTIEQUAL:
-                        flow(outV, name, o, owner, offset, work);
-                        break;
-                    case PcodeOp.INDIRECT:
-                        if (d.getInput(0) == vn) {
+        boolean changed = true;
+        while (changed && guard < 100_000) {
+            while (!work.isEmpty() && guard++ < 100_000) {
+                ghidra.program.model.pcode.Varnode vn = work.poll();
+                String name = owner.get(vn);
+                Long o = offset.get(vn);
+                java.util.Iterator<ghidra.program.model.pcode.PcodeOp> ds = vn.getDescendants();
+                while (ds.hasNext()) {
+                    ghidra.program.model.pcode.PcodeOp d = ds.next();
+                    ghidra.program.model.pcode.Varnode outV = d.getOutput();
+                    switch (d.getOpcode()) {
+                        case PcodeOp.COPY:
+                        case PcodeOp.CAST:
+                        case PcodeOp.MULTIEQUAL:
                             flow(outV, name, o, owner, offset, work);
-                        }
-                        break;
-                    case PcodeOp.INT_ADD:
-                    case PcodeOp.PTRSUB: {
-                        ghidra.program.model.pcode.Varnode other =
-                            d.getInput(0) == vn ? d.getInput(1) : d.getInput(0);
-                        Long n = other.isConstant() && o != null ? o + signed(other) : null;
-                        flow(outV, name, n, owner, offset, work);
-                        break;
-                    }
-                    case PcodeOp.INT_SUB:
-                        if (d.getInput(0) == vn && d.getInput(1).isConstant() && o != null) {
-                            flow(outV, name, o - signed(d.getInput(1)), owner, offset, work);
-                        }
-                        break;
-                    case PcodeOp.PTRADD: {
-                        if (d.getInput(0) != vn) {
+                            break;
+                        case PcodeOp.INDIRECT:
+                            if (d.getInput(0) == vn) {
+                                flow(outV, name, o, owner, offset, work);
+                            }
+                            break;
+                        case PcodeOp.INT_ADD:
+                        case PcodeOp.PTRSUB: {
+                            ghidra.program.model.pcode.Varnode other =
+                                d.getInput(0) == vn ? d.getInput(1) : d.getInput(0);
+                            Long n = other.isConstant() && o != null ? o + signed(other) : null;
+                            flow(outV, name, n, owner, offset, work);
                             break;
                         }
-                        ghidra.program.model.pcode.Varnode idx = d.getInput(1);
-                        ghidra.program.model.pcode.Varnode sz = d.getInput(2);
-                        Long n = idx.isConstant() && sz.isConstant() && o != null
-                            ? o + signed(idx) * signed(sz) : null;
-                        flow(outV, name, n, owner, offset, work);
+                        case PcodeOp.INT_SUB:
+                            if (d.getInput(0) == vn && d.getInput(1).isConstant() && o != null) {
+                                flow(outV, name, o - signed(d.getInput(1)), owner, offset, work);
+                            }
+                            break;
+                        case PcodeOp.PTRADD: {
+                            if (d.getInput(0) != vn) {
+                                break;
+                            }
+                            ghidra.program.model.pcode.Varnode idx = d.getInput(1);
+                            ghidra.program.model.pcode.Varnode sz = d.getInput(2);
+                            Long n = idx.isConstant() && sz.isConstant() && o != null
+                                ? o + signed(idx) * signed(sz) : null;
+                            flow(outV, name, n, owner, offset, work);
+                            break;
+                        }
+                        default:
+                            break; // loads, stores, calls: recorded below from the final state
+                    }
+                }
+            }
+            changed = false;
+            for (ghidra.program.model.pcode.PcodeOpAST op : all) {
+                ghidra.program.model.pcode.Varnode outV = op.getOutput();
+                if (op.getOpcode() != PcodeOp.MULTIEQUAL || outV == null || offset.get(outV) == null) {
+                    continue;
+                }
+                String name = owner.get(outV);
+                Long o = offset.get(outV);
+                for (ghidra.program.model.pcode.Varnode in : op.getInputs()) {
+                    if (!name.equals(owner.get(in)) || !o.equals(offset.get(in))) {
+                        offset.put(outV, null);
+                        work.add(outV);
+                        changed = true;
                         break;
                     }
-                    case PcodeOp.LOAD:
-                        if (d.getInput(1) == vn) {
-                            add(acc, name, o == null ? "r?" : "r" + o + "." + outV.getSize());
-                            if (outV != null && o != null) {
-                                loadedFromArg.add(outV);
-                                loadedAt.put(outV, name + "\u0000" + o);
-                            }
-                        }
-                        break;
-                    case PcodeOp.STORE:
-                        if (d.getInput(1) == vn) {
-                            add(acc, name, o == null ? "w?" : "w" + o + "." + d.getInput(2).getSize());
-                        }
-                        if (d.getInput(2) == vn) {
-                            add(acc, name, "e");
-                        }
-                        break;
-                    case PcodeOp.CALL:
-                    case PcodeOp.CALLIND:
-                        for (int k = 1; k < d.getNumInputs(); k++) {
-                            if (d.getInput(k) == vn) {
-                                ghidra.program.model.pcode.Varnode t = d.getInput(0);
-                                add(acc, name, "p" + (d.getOpcode() == PcodeOp.CALL
-                                    ? String.format("%08x", t.getOffset()) : "?"));
-                            }
-                        }
-                        break;
-                    default:
-                        break; // compares, null checks, returns: no memory access
                 }
+            }
+        }
+        if (guard >= 100_000) {
+            return "-\t-1\t-1";
+        }
+        // What is done through each input, from the final owners and offsets.
+        java.util.Map<ghidra.program.model.pcode.Varnode, String> loadedAt = new java.util.HashMap<>();
+        for (ghidra.program.model.pcode.PcodeOpAST d : all) {
+            ghidra.program.model.pcode.Varnode outV = d.getOutput();
+            switch (d.getOpcode()) {
+                case PcodeOp.LOAD: {
+                    ghidra.program.model.pcode.Varnode a = d.getInput(1);
+                    String name = owner.get(a);
+                    if (name == null) {
+                        break;
+                    }
+                    Long o = offset.get(a);
+                    add(acc, name, o == null ? "r?" : "r" + o + "." + outV.getSize());
+                    if (outV != null && o != null) {
+                        loadedAt.put(outV, name + "\u0000" + o);
+                    }
+                    break;
+                }
+                case PcodeOp.STORE: {
+                    ghidra.program.model.pcode.Varnode a = d.getInput(1);
+                    String name = owner.get(a);
+                    if (name != null) {
+                        Long o = offset.get(a);
+                        add(acc, name, o == null ? "w?" : "w" + o + "." + d.getInput(2).getSize());
+                    }
+                    String stored = owner.get(d.getInput(2));
+                    if (stored != null) {
+                        add(acc, stored, "e");
+                    }
+                    break;
+                }
+                case PcodeOp.CALL:
+                case PcodeOp.CALLIND:
+                    for (int k = 1; k < d.getNumInputs(); k++) {
+                        String name = owner.get(d.getInput(k));
+                        if (name != null) {
+                            ghidra.program.model.pcode.Varnode t = d.getInput(0);
+                            add(acc, name, "p" + (d.getOpcode() == PcodeOp.CALL
+                                ? String.format("%08x", t.getOffset()) : "?"));
+                        }
+                    }
+                    break;
+                default:
+                    break; // compares, null checks, returns: no memory access
             }
         }
         // Pointers loaded from an argument and then dereferenced (one level), and the LOADs and
