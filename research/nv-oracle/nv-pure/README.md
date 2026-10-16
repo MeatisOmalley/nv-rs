@@ -182,6 +182,16 @@ folder.
   | spurious write | an extra store into `this` | yes (`BufferMismatch`) |
   | swapped pointer comparisons | two `this->field == other` tests reordered | yes, after pointer values joined the field pools and lockstep fills were added |
 
+- **Fault injection** for the safety paths, with a stand-in for nv-call (through
+  `NV_CALL`) and a planted translation:
+
+  | Fault | Result |
+  | --- | --- |
+  | nv-call crashes on one vector, hangs on another, is slow on two | `ExeCrash`, `ExeTimeout`, `ExeSlow` on exactly those vectors; nv-call restarted twice; every other vector's verdict identical to a clean run |
+  | nv-call reports another arena base / exits before its header / exits 0 with vectors left | the check stops with that message |
+  | a translation loops forever on one vector | the watchdog stops the check after `--rust-timeout`, naming the vector and its inputs |
+  | a translation allocates 256 MB (heap top reaches the arena) | the heap guard stops the check |
+
 ## Known limits
 
 - **sNaN quieting in `f32` results is invisible.** The uniform form returns

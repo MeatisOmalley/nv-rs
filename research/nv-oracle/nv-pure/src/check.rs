@@ -78,12 +78,11 @@ use crate::vectors::ARENA;
 /// them, as nv-call's arena is).
 const ARENA_MAP: u32 = 0x0010_0000;
 
-/// Fails loudly when the engine heap has grown into the arena.
-fn heap_guard(e: &Engine, addr: u32, when: &str) -> Result<(), String> {
-    let top = e.mem.heap_top();
+/// Fails loudly when the engine heap (its top `top`) has grown into the arena.
+fn heap_guard(top: u32, id: &str, when: &str) -> Result<(), String> {
     if top >= ARENA {
         Err(format!(
-            "engine heap top {top:08x} reached the buffer arena at {ARENA:08x} ({when} {addr:08x}); \
+            "engine heap top {top:08x} reached the buffer arena at {ARENA:08x} ({when} vector {id}); \
              the pointer-argument check cannot run"
         ))
     } else {
@@ -709,7 +708,7 @@ fn engine_side(
                 *c = format!("{id} ({}) with [{}]", p.unit, shown());
             }
             let mut e = template.make();
-            heap_guard(&e, p.addr, "before")?;
+            heap_guard(e.mem.heap_top(), &id, "before")?;
             // The buffers where nv-call puts them: the arena base, 16-aligned, in order.
             let addrs = vectors::buffer_addrs(&p.bufs);
             let used = addrs
@@ -731,7 +730,7 @@ fn engine_side(
             }
             let rust = panic::catch_unwind(AssertUnwindSafe(|| e.call(p.addr, &words)))
                 .map_err(panic_text);
-            heap_guard(&e, p.addr, "after")?;
+            heap_guard(e.mem.heap_top(), &id, "after")?;
             let rust_bufs: Vec<Vec<u8>> = addrs
                 .iter()
                 .zip(&p.bufs)
@@ -927,5 +926,22 @@ mod tests {
             compare(Ty::U32, &val(0, None), &data, 0).2,
             Kind::RustPanicOnly
         );
+    }
+
+    #[test]
+    fn guards() {
+        assert!(heap_guard(ARENA - 8, "x_0", "before").is_ok());
+        let e = heap_guard(ARENA, "0069ae60_6", "after").unwrap_err();
+        assert!(e.contains("after vector 0069ae60_6"), "{e}");
+        assert!(heap_guard(ARENA + 0x100, "x_0", "before").is_err());
+
+        let header =
+            |base: &str| format!(r#"{{"type":"header","tool":"nv-call","arena_base":{base}}}"#);
+        assert!(check_arena(&header("\"0x30000000\"")).is_ok());
+        for bad in ["\"0x31000000\"", "\"junk\"", "805306368", "null"] {
+            assert!(check_arena(&header(bad)).is_err(), "{bad}");
+        }
+        assert!(check_arena(r#"{"type":"header","tool":"nv-call"}"#).is_err());
+        assert!(check_arena("not json").is_err());
     }
 }
