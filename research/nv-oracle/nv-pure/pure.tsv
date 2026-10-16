@@ -260,6 +260,7 @@ address	cc	params	ret	unit	callees	consts	buffers
 0047d720	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesactorbasedata.rs		i8	0:80:0:52.4
 0047d7c0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesactorbasedata.rs		i2	0:80:0:52.4
 0047d7e0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesactorbasedata.rs		i4	0:80:0:52.4
+0047f060	cdecl	i32	bool	crates/engine/src/units/fallout_shared/tesaiform.rs		i32,i46,i1,i0	
 004801e0	thiscall	ptr,u32	u16	crates/engine/src/units/fallout_shared/run_004801e0.rs		i0,i7	0:32:0:
 00481f30	cdecl	u8	bool	crates/engine/src/units/fallout_shared/tescontainer.rs		i24,i92,i1	
 00482f20	thiscall	ptr	u8	crates/engine/src/units/fallout_shared/tesdescription.rs			0:1600:0:1568.1
@@ -267,6 +268,8 @@ address	cc	params	ret	unit	callees	consts	buffers
 00484bf0	thiscall	ptr,u32	u16	crates/engine/src/units/fallout_shared/tesform.rs		i1,i4	0:32:0:
 00485bc0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/tesform.rs			0:32:0:12.4
 004865f0	cdecl	u16,u16	u16	crates/engine/src/units/fallout_shared/tesform.rs			
+00487400	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/run_00487400.rs			0:32:0:
+00487410	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/run_00487400.rs			0:32:0:
 0048d150	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared/tesspelllist.rs		i12	0:32:0:
 0048ef90	thiscall	ptr,u32	ptr	crates/engine/src/units/fallout_shared/animation.rs			0:32:0:4.4
 0048efb0	thiscall	ptr,u32	u8	crates/engine/src/units/fallout_shared/animation.rs		i-1	0:32:0:
@@ -304,6 +307,7 @@ address	cc	params	ret	unit	callees	consts	buffers
 004a41a0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/run_004a3c20.rs		i4	0:48:0:29.1
 004a4200	thiscall	ptr	u16	crates/engine/src/units/fallout_shared/run_004a3c20.rs			0:48:0:28.1
 004a46b0	thiscall	ptr,i32	u32	crates/engine/src/units/fallout_shared/run_004a4460.rs		i96	0:32:0:0.4
+004a7290	thiscall	ptr	f32	crates/engine/src/units/fallout_shared/bgsprimitive.rs			0:32:0:0.4;4.4;8.4
 004a82c0	cdecl		bool	crates/engine/src/units/fallout_shared/bgssceneinfo.rs			
 004a8ae0	thiscall	ptr	u16	crates/engine/src/units/fallout_shared/tesactorbasedata.rs			0:32:0:8.2
 004a8f20	cdecl	i32,i32	i32	crates/engine/src/units/fallout_shared/run_004a8b00.rs			
@@ -376,6 +380,7 @@ address	cc	params	ret	unit	callees	consts	buffers
 004dc2c0	cdecl		u32	crates/engine/src/units/fallout_shared/renderer.rs			
 004dc310	cdecl		bool	crates/engine/src/units/fallout_shared/renderer.rs		i2	
 004de8d0	cdecl		f32	crates/engine/src/units/fallout_shared/run_004de420.rs		f3f800000	
+004dead0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/screencustomsplatter.rs			0:32:0:
 004e3260	cdecl		u32	crates/engine/src/units/fallout_shared/teswater.rs			
 004e3270	cdecl		u32	crates/engine/src/units/fallout_shared/teswater.rs			
 004e3c40	cdecl		u8	crates/engine/src/units/fallout_shared/teswater.rs			
@@ -429,6 +434,7 @@ address	cc	params	ret	unit	callees	consts	buffers
 005094f0	cdecl	u32	bool	crates/engine/src/units/fallout_shared/tesfurniture.rs		i0,i10,i1	
 00509510	cdecl	u32	bool	crates/engine/src/units/fallout_shared/tesfurniture.rs		i0,i10,i20,i26,i1	
 005098e0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesfurniture.rs		i0,i1	0:368:0:348.1;349.1
+0050d4a0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/teslight.rs		i16	0:32:0:8.4
 0050e9c0	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared/tesobject.rs	006815c0	i6	0:32:0:
 0050ea90	cdecl		u32	crates/engine/src/units/fallout_shared/tesobject.rs			
 0050eb30	thiscall	ptr	f32	crates/engine/src/units/fallout_shared/tesobject.rs			0:32:0:0.2
@@ -438,6 +444,9 @@ address	cc	params	ret	unit	callees	consts	buffers
 0050f6e0	cdecl		u32	crates/engine/src/units/fallout_shared/tesobject.rs			
 0050fbe0	thiscall	ptr,u32,u32	u32	crates/engine/src/units/fallout_shared/tesobject.rs			0:32:0:
 00519b00	thiscall	ptr	u8	crates/engine/src/units/fallout_shared/packagetarget.rs			0:32:0:0.1
+0051d150	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/tesobjecttree.rs			0:32:0:
+0051d1b0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared/tesobjecttree.rs			0:32:0:
+0051f4d0	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_0051f4d0.rs			0:480:0:460.4
 0051f510	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:912:0:880.4
 0051f550	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:560:0:536.4
 00521630	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:608:0:576.4
@@ -463,6 +472,7 @@ address	cc	params	ret	unit	callees	consts	buffers
 00529ea0	thiscall	ptr	u8	crates/engine/src/units/fallout_shared/imagespacemodifierinstance.rs			0:64:0:32.1
 0052a920	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/imagespacemodifierinstance.rs	00529990	i0,i68,i5,i1,d0000000000000000,f00000000	0:48:0:20.4;28.4
 0052aa80	thiscall	ptr,u32	bool	crates/engine/src/units/fallout_shared/run_0052a980.rs			0:32:0:0.4
+0052bad0	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared/tesimagespacemodifier.rs	006815c0	i204	0:32:0:
 00534140	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesland.rs		i1024,i1	0:48:0:28.4
 005341e0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesland.rs		i16,i1	0:48:0:28.4
 00539460	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/tesland.rs		i1,i4,i2	0:48:0:28.4
@@ -697,7 +707,6 @@ address	cc	params	ret	unit	callees	consts	buffers
 005f2750	cdecl	u32	bool	crates/engine/src/units/fallout_shared/tesanimgroup.rs		i20,i129,i1	
 005f36f0	thiscall	ptr	u32	crates/engine/src/units/fallout_ai/actormover.rs			0:80:0:52.4
 005f5760	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared/run_005f5630.rs		i84	0:32:0:
-005f65d0	thiscall	ptr,ptr	bool	crates/engine/src/units/fallout_shared/run_005f5630.rs		i0	0:32:0:0.4;4.4|1:32:0:0.4
 005f7590	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:304:0:280.4
 005f9ad0	thiscall	ptr	u8	crates/engine/src/units/unplaced/run_005f9820.rs			0:336:0:304.1
 005f9b30	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_005f9820.rs			0:352:0:332.4
@@ -722,6 +731,10 @@ address	cc	params	ret	unit	callees	consts	buffers
 006214b0	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:880:0:848.4
 006223c0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_havok/cellmopp.rs			0:32:0:
 00622420	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_havok/cellmopp.rs			0:32:0:
+006240d0	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared_havok/run_00624070.rs	006815c0		0:32:0:
+00624e70	thiscall	ptr,u32,u32	u32	crates/engine/src/units/fallout_shared_havok/havokstream.rs		i1	0:32:0:
+006259f0	cdecl		u32	crates/engine/src/units/fallout_shared_havok/havokstream.rs			
+00626660	thiscall	ptr,u32	u32	crates/engine/src/units/fallout_shared_havok/run_00626560.rs			0:32:0:0.4
 006286d0	thiscall	ptr	i32	crates/engine/src/units/fallout_ai/highprocess.rs			0:112:0:88.4
 00629ab0	thiscall	ptr,i32	ptr	crates/engine/src/units/fallout_shared_havok/loadedareabound.rs			0:32:0:0.4
 0062f2f0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared_havok/teswaterlistener.rs			0:32:0:8.1
@@ -764,13 +777,27 @@ address	cc	params	ret	unit	callees	consts	buffers
 00646f50	thiscall	ptr	f32	crates/engine/src/units/fallout_shared/combatformulas.rs			0:320:0:292.4
 00647790	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/combatformulas.rs		i32	0:320:0:300.4
 00647920	cdecl	f32,f32	f32	crates/engine/src/units/fallout_shared/combatformulas.rs		i65	
+006499c0	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_00649530.rs			0:32:0:
 00649b80	thiscall	ptr	bool	crates/engine/src/units/fallout_ai/highprocess.rs			0:416:0:395.1
 00658930	thiscall	ptr	u16	crates/engine/src/units/unplaced/run_006586c0.rs			0:32:0:10.2
 00659210	thiscall	ptr,u8,u32	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenmanager.rs		i5	0:32:0:
+0065bee0	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_0065bee0.rs			0:32:0:
+00661d30	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenmorphdata.rs			0:32:0:
+00661d90	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenmorphdata.rs			0:32:0:
+00662390	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenmorphdata.rs			0:32:0:
+006626e0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenmorphdata.rs			0:32:0:
+006629e0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_facegen/bsfacegenninode.rs			0:32:0:
+0066b5b0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
+0066d400	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
+0066d430	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
+0066d510	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
+0066d610	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
+0066d720	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_speedtree/bstreenode.rs			0:32:0:
 0066dba0	cdecl	i32	i32	crates/engine/src/units/fallout_shared/actionpoints.rs		i22,i0,i14,i13,i1,i2,i3,i4,i5,i6,i7,i8,i19	
 0066dd80	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/actionpoints.rs		i8	0:320:0:300.4
 0066dde0	cdecl	u32	bool	crates/engine/src/units/fallout_shared/actionpoints.rs		i21,i1	
 0066de30	cdecl	u32	bool	crates/engine/src/units/fallout_shared/actionpoints.rs		i21,i1	
+0066eba0	cdecl	u32	bool	crates/engine/src/units/fallout_shared/actorvalue.rs		i0,i18,i43,i1	
 00670ed0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/package.rs		i64,i1	0:48:0:28.4
 00670ef0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/package.rs		i16,i1	0:48:0:28.4
 00670f10	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/package.rs		i128,i1	0:48:0:28.4
@@ -813,6 +840,13 @@ address	cc	params	ret	unit	callees	consts	buffers
 00680520	thiscall	ptr	u16	crates/engine/src/units/fallout_shared/packagetarget.rs		i1,i4,i0,i2	0:32:0:0.1
 006814e0	thiscall	ptr	bool	crates/engine/src/units/fallout_shared/run_00681220.rs		i4,i1	0:32:0:0.1
 006815c0	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared/run_006815c0.rs			0:32:0:
+00682480	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstecreatetask.rs			0:32:0:
+00682800	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffect.rs			0:32:0:
+00682ac0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectdebris.rs			0:32:0:
+006838a0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectgeometrydecal.rs			0:32:0:
+00688590	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectgeometrydecal.rs			0:32:0:
+006885d0	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectgeometrydecal.rs			0:32:0:
+00688f80	thiscall	ptr	u32	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectparticle.rs			0:32:0:
 0068acb0	thiscall	ptr	ptr	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectsimpledecal.rs			0:32:0:
 0068b050	cdecl	f64,f32	f64	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectsimpledecal.rs		i5	
 0068c890	thiscall	ptr,u16	bool	crates/engine/src/units/fallout_shared_tempeffects/bstempeffectsimpledecal.rs			0:48:0:24.2
@@ -1014,7 +1048,11 @@ address	cc	params	ret	unit	callees	consts	buffers
 007eb8c0	cdecl		u32	crates/engine/src/units/fallout_interface/vatsmenu.rs		i1056	
 007fdf30	cdecl		u32	crates/engine/src/units/fallout_interface/forenderedmenuracesex.rs			
 008041a0	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess.rs			0:96:0:68.4
+00806f00	thiscall	ptr	u32	crates/engine/src/units/fallout_magic/bhkcharacterlistenerspell.rs			0:32:0:
 00812870	thiscall	ptr	f32	crates/engine/src/units/fallout_ai/highprocess.rs			0:192:0:164.4
+0081b6b0	thiscall	ptr	u32	crates/engine/src/units/fallout_magic/magichiteffect.rs			0:32:0:
+0081c5f0	thiscall	ptr	u32	crates/engine/src/units/fallout_magic/magicmodelhiteffect.rs			0:32:0:
+0081f310	thiscall	ptr	u32	crates/engine/src/units/fallout_magic/magicshaderhiteffect.rs			0:32:0:
 00824080	thiscall	ptr	bool	crates/engine/src/units/fallout_magic/magictarget.rs		i512	0:48:0:24.4
 008240f0	thiscall	ptr	bool	crates/engine/src/units/fallout_magic/magictarget.rs			0:48:0:24.4
 008256d0	thiscall	ptr	bool	crates/engine/src/units/fallout_magic/run_008256d0.rs		i0,i1	0:32:0:0.4;4.4
@@ -1315,6 +1353,11 @@ address	cc	params	ret	unit	callees	consts	buffers
 00904430	thiscall	ptr	f32	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:1120:0:1088.4
 00905230	thiscall	ptr	i32	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:528:0:508.4
 009052c0	thiscall	ptr,u32	ptr	crates/engine/src/units/fallout_ai/highprocess_p5.rs		i84	0:32:0:4.4
+00920b60	cdecl		u32	crates/engine/src/units/fallout_ai/middlehighprocess.rs			
+00920b70	cdecl		u32	crates/engine/src/units/fallout_ai/middlehighprocess.rs			
+00923000	thiscall	u32	u32	crates/engine/src/units/fallout_ai/middlehighprocess.rs		i212	
+00929390	cdecl	u32,u32	bool	crates/engine/src/units/fallout_ai/middlehighprocess_p2.rs			
+0092a980	cdecl	u32	bool	crates/engine/src/units/fallout_ai/middlehighprocess_p2.rs		i2,i3,i1	
 0092f140	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/mobileobject.rs			0:3392:0:3372.4
 00930c50	thiscall	ptr	bool	crates/engine/src/units/fallout_ai/mobileobject.rs			0:48:0:24.4
 00933790	thiscall	ptr,u32	u32	crates/engine/src/units/fallout_ai/mobileobject.rs		i0	0:32:0:
@@ -1418,6 +1461,8 @@ address	cc	params	ret	unit	callees	consts	buffers
 009b6600	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:384:0:364.4
 009b88a0	thiscall	ptr	f32	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:192:0:168.4
 009b88c0	thiscall	ptr	f32	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:192:0:172.4
+009ba4d0	thiscall	ptr	u32	crates/engine/src/units/fallout_ai/missileprojectile.rs			0:32:0:
+009ba510	thiscall	ptr	u32	crates/engine/src/units/fallout_ai/missileprojectile.rs			0:32:0:
 009bd540	thiscall	ptr	f32	crates/engine/src/units/fallout_ai/projectile.rs			0:1872:0:1840.4
 009c0070	thiscall	ptr	u32	crates/engine/src/units/fallout_ai/projectile.rs			0:368:0:340.4
 009c19e0	thiscall	ptr	bool	crates/engine/src/units/fallout_ai/projectile.rs		i16384	0:32:0:0.4
@@ -1440,7 +1485,6 @@ address	cc	params	ret	unit	callees	consts	buffers
 009ee020	thiscall	ptr	ptr	crates/engine/src/units/fallout_ai/highprocess_p5.rs			0:576:0:548.4
 009f27f0	thiscall	ptr	u32	crates/engine/src/units/fallout_ai/guardpackage.rs		i14	0:32:0:
 009fd0f0	thiscall	ptr	ptr	crates/engine/src/units/nisystem/allocator_support.rs			0:32:0:0.4
-00a089c0	thiscall	ptr	ptr	crates/engine/src/units/bsmenu/tile.rs		i0	0:64:0:40.4;44.4
 00a09030	cdecl	i32	u32	crates/engine/src/units/bsmenu/tile.rs		i1001,i1084,i0	
 00a0bae0	thiscall	ptr,u32,u32	bool	crates/engine/src/units/bsmenu/tile.rs		i1	0:32:0:
 00a0bbd0	thiscall	ptr	u32	crates/engine/src/units/bsmenu/tile.rs		i903	0:32:0:
@@ -1459,34 +1503,373 @@ address	cc	params	ret	unit	callees	consts	buffers
 00a24080	thiscall	u32,u32	u32	crates/engine/src/units/unplaced/run_00a237f0.rs		i0,i1,i14,i2,i4,i8,i16,i32,i64,i128,i256,i512,i4096,i8192,i16384,i32768	
 00a59e20	thiscall	ptr,ptr	ptr	crates/engine/src/units/nimain/niavobject.rs			0:32:0:8.4|1:32:0:0.4
 00a5a420	cdecl	ptr	ptr	crates/engine/src/units/nimain/niavobject.rs			0:32:0:
+00a63840	thiscall	ptr,u32	u32	crates/engine/src/units/nimain/nistream.rs			0:32:0:4.4
+00a75f10	thiscall	ptr	ptr	crates/engine/src/units/nimain/nitristripsdata.rs			0:96:0:76.4
+00a75f30	cdecl		u32	crates/engine/src/units/nimain/nitristripsdata.rs			
 00a943f0	cdecl		u32	crates/engine/src/units/nimain/niswitchnode.rs			
+00aa1d40	cdecl		u8	crates/engine/src/units/unplaced/run_00aa1d40.rs			
 00aa4490	cdecl		bool	crates/engine/src/units/bscore/run_00aa43a0.rs		i0,i1	
 00aa44b0	cdecl		u8	crates/engine/src/units/bscore/run_00aa43a0.rs			
 00aa47c0	thiscall	ptr,u32,u32	u32	crates/engine/src/units/bscore/run_00aa45a0.rs		i0	0:32:0:
+00acbb70	thiscall	ptr	u32	crates/engine/src/units/facegen/algs.rs			0:32:0:
 00adb960	thiscall	ptr,u32,u32	bool	crates/engine/src/units/bsaudio/bsaudiomanager.rs			0:32:0:
 00adbf40	thiscall	ptr,u32,u32,u32,u32	bool	crates/engine/src/units/bsaudio/bsaudiomanager.rs			0:32:0:
 00ae8b80	thiscall	u32	u8	crates/engine/src/units/bsaudio/bsaudiomanager.rs		i2	
 00ae8dc0	thiscall	u32,u32,u32	bool	crates/engine/src/units/bsaudio/bsaudiomanager.rs			
+00c1fa40	cdecl		u32	crates/engine/src/units/niparticle/nipsyscylinderemitter.rs			
+00c1fe10	cdecl		u32	crates/engine/src/units/niparticle/nipsyssphereemitter.rs			
+00c201c0	cdecl		u32	crates/engine/src/units/niparticle/nipsysboxemitter.rs			
+00c206a0	cdecl		u32	crates/engine/src/units/niparticle/nipsysrotationmodifier.rs			
+00c21720	cdecl		u32	crates/engine/src/units/niparticle/nipsysmeshupdatemodifier.rs			
+00c21e10	cdecl		u32	crates/engine/src/units/niparticle/nimeshparticlesystem.rs			
+00c21fd0	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitter.rs			
+00c22af0	cdecl		u32	crates/engine/src/units/niparticle/nipsysgravitymodifier.rs			
+00c23ce0	cdecl		u32	crates/engine/src/units/niparticle/nipsysspawnmodifier.rs			
+00c24e90	cdecl		u32	crates/engine/src/units/niparticle/nipsysdata.rs			
+00c257c0	cdecl		u32	crates/engine/src/units/niparticle/bsstripparticlesystem.rs			
+00c25870	cdecl		u32	crates/engine/src/units/niparticle/nipsysupdatetask.rs			
+00c25ee0	cdecl		u32	crates/engine/src/units/niparticle/bsstrippsysdata.rs			
+00c26810	cdecl		u32	crates/engine/src/units/niparticle/nipsysvortexfieldmodifier.rs			
+00c27130	cdecl		u32	crates/engine/src/units/niparticle/nipsysupdatectlr.rs			
+00c273c0	cdecl		u32	crates/engine/src/units/niparticle/nipsysturbulencefieldmodifier.rs			
+00c281f0	cdecl		u32	crates/engine/src/units/niparticle/nipsyssphericalcollider.rs			
+00c28400	cdecl		u32	crates/engine/src/units/niparticle/nipsysresetonloopctlr.rs			
+00c285c0	cdecl		u32	crates/engine/src/units/niparticle/nipsysradialfieldmodifier.rs			
+00c28b90	cdecl		u32	crates/engine/src/units/niparticle/nipsyspositionmodifier.rs			
+00c299d0	cdecl		u32	crates/engine/src/units/niparticle/nipsysplanarcollider.rs			
+00c29d40	cdecl		u32	crates/engine/src/units/niparticle/nipsysmodifieractivectlr.rs			
+00c29e90	cdecl		u32	crates/engine/src/units/niparticle/nipsysinitialrotspeedvarctlr.rs			
+00c29f90	cdecl		u32	crates/engine/src/units/niparticle/nipsysinitialrotspeedctlr.rs			
+00c2a080	cdecl		u32	crates/engine/src/units/niparticle/nipsysinitialrotanglevarctlr.rs			
+00c2a1a0	cdecl		u32	crates/engine/src/units/niparticle/nipsysinitialrotanglectlr.rs			
+00c2a360	cdecl		u32	crates/engine/src/units/niparticle/nipsysgrowfademodifier.rs			
+00c2a8a0	cdecl		u32	crates/engine/src/units/niparticle/nipsysgravitystrengthctlr.rs			
+00c2a9b0	cdecl		u32	crates/engine/src/units/niparticle/nipsysgravityfieldmodifier.rs			
+00c2b040	cdecl		u32	crates/engine/src/units/niparticle/nipsysfieldmaxdistancectlr.rs			
+00c2b140	cdecl		u32	crates/engine/src/units/niparticle/nipsysfieldmagnitudectlr.rs			
+00c2b230	cdecl		u32	crates/engine/src/units/niparticle/nipsysfieldattenuationctlr.rs			
+00c2b360	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterspeedctlr.rs			
+00c2b460	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterplanaranglevarctlr.rs			
+00c2b550	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterplanaranglectlr.rs			
+00c2b650	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterlifespanctlr.rs			
+00c2b750	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterinitialradiusctlr.rs			
+00c2b8b0	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterdeclinationvarctlr.rs			
+00c2b9a0	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterdeclinationctlr.rs			
+00c2baa0	cdecl		u32	crates/engine/src/units/niparticle/nipsysemitterctlrdata.rs			
+00c2c0a0	cdecl		u32	crates/engine/src/units/niparticle/nipsysdragmodifier.rs			
+00c2c800	cdecl		u32	crates/engine/src/units/niparticle/nipsysdragfieldmodifier.rs			
+00c2d170	cdecl		u32	crates/engine/src/units/niparticle/nipsyscolormodifier.rs			
+00c2d540	cdecl		u32	crates/engine/src/units/niparticle/nipsyscollidermanager.rs			
+00c2d710	cdecl		u32	crates/engine/src/units/niparticle/nipsysboundupdatemodifier.rs			
+00c2e540	cdecl		u32	crates/engine/src/units/niparticle/nipsysbombmodifier.rs			
+00c2efe0	cdecl		u32	crates/engine/src/units/niparticle/nipsysagedeathmodifier.rs			
+00c2f3d0	cdecl		u32	crates/engine/src/units/niparticle/nipsysairfieldspreadctlr.rs			
+00c2f590	cdecl		u32	crates/engine/src/units/niparticle/nipsysairfieldmodifier.rs			
+00c30630	cdecl		u32	crates/engine/src/units/niparticle/nipsysairfieldinheritvelocityctlr.rs			
+00c307c0	cdecl		u32	crates/engine/src/units/niparticle/nipsysairfieldairfrictionctlr.rs			
+00c30a80	cdecl		u32	crates/engine/src/units/niparticle/nimeshpsysdata.rs			
+00c31290	cdecl		u32	crates/engine/src/units/niparticle/nipsysmodifierctlr.rs			
+00c31710	cdecl		u32	crates/engine/src/units/niparticle/nipsysmodifier.rs			
+00c31bc0	cdecl		u32	crates/engine/src/units/niparticle/nipsysvolumeemitter.rs			
+00c320f0	cdecl		u32	crates/engine/src/units/niparticle/nipsysfieldmodifier.rs			
+00c327e0	cdecl		u32	crates/engine/src/units/niparticle/nipsyscollider.rs			
+00c32be0	cdecl		u32	crates/engine/src/units/niparticle/nipsysmodifierboolctlr.rs			
+00c32e00	cdecl		u32	crates/engine/src/units/niparticle/nipsysmodifierfloatctlr.rs			
 00c36300	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsmultibound.rs			0:32:0:
 00c382a0	thiscall	ptr	bool	crates/engine/src/units/bsmain/bsmultiboundaabb.rs		i1	0:32:0:
+00c3a610	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsmultiboundroom.rs			0:32:0:
+00c3b9e0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsstream.rs			0:32:0:
+00c3ba70	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsstream.rs			0:32:0:
 00c3e3a0	thiscall	ptr,u32,u32	i32	crates/engine/src/units/bsmain/iomanager.rs	00ec77e0	i16,i56,i4,i20,i64,i32,i31	0:32:0:
+00c43650	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsxflags.rs			0:32:0:
+00c43cf0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsvaluenode.rs			0:32:0:
+00c457d0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsrangenode.rs			0:32:0:
 00c45ab0	cdecl		bool	crates/engine/src/units/bsmain/run_00c457e0.rs		i1	
 00c45ad0	cdecl		u16	crates/engine/src/units/bsmain/run_00c457e0.rs			
+00c46960	thiscall	ptr	u32	crates/engine/src/units/bsmain/bswindmodifier.rs			0:32:0:
+00c47650	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsmultiboundnode.rs			0:32:0:
+00c4ac90	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsblastnode.rs			0:32:0:
 00c4aef0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsdebrisnode.rs			0:32:0:
+00c4b210	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsdamagestage1.rs			0:32:0:
+00c4f8d0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsportal.rs			0:32:0:
 00c4f9a0	thiscall	ptr,u32	ptr	crates/engine/src/units/bsmain/bsmultiboundshape.rs			0:32:0:
+00c516f0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsparticlesystemmanager.rs			0:32:0:
 00c52870	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsscenegraph.rs			0:32:0:
+00c53e00	thiscall	ptr	u32	crates/engine/src/units/bsmain/nibsbonelodcontroller.rs			0:32:0:
+00c54d60	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsfurnituremarker.rs			0:32:0:
+00c55320	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsbound.rs			0:32:0:
 00c5b5d0	thiscall	ptr	u16	crates/engine/src/units/bsmain/bsportalgraph.rs			0:96:0:72.2
+00c5cea0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bspsysmultitargetemitterctlr.rs			0:32:0:
 00c5d2a0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsscissortrishape.rs			0:32:0:
 00c5d2b0	cdecl	f32	f32	crates/engine/src/units/bsmain/run_00c5d2b0.rs		d4018000000000000,d402e000000000000,d4024000000000000	
 00c5d300	cdecl	f32,f32,f32	f32	crates/engine/src/units/bsmain/run_00c5d2b0.rs			
+00c5ec90	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsmasterparticlesystem.rs			0:32:0:
+00c5f560	thiscall	ptr	u32	crates/engine/src/units/bsmain/bstexturedata.rs			0:32:0:
 00c5fc60	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsninode.rs			0:32:0:
+00c600f0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bspsysstripupdatemodifier.rs			0:32:0:
+00c60d40	thiscall	ptr	u32	crates/engine/src/units/bsmain/bspsyssimplecolormodifier.rs			0:32:0:
+00c61270	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsmultiboundcapsule.rs			0:32:0:
 00c61820	thiscall	ptr,u32	ptr	crates/engine/src/units/bsmain/run_00c61610.rs			0:32:0:
+00c632e0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bspsysarrayemitter.rs			0:32:0:
+00c63320	thiscall	ptr	u32	crates/engine/src/units/bsmain/bspsysarrayemitter.rs			0:32:0:
+00c63aa0	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsparentvelocitymodifier.rs			0:32:0:
+00c64600	thiscall	ptr	u32	crates/engine/src/units/bsmain/bsdecalpvextradata.rs			0:32:0:
+00c657e0	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_00c64c30.rs			0:32:0:
 00c661c0	stdcall	u32,u32	u32	crates/engine/src/units/bshavok/bhkworld.rs			
 00c69220	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkworld.rs			0:32:0:
 00c69230	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkworld.rs		i240	0:32:0:
+00c6b940	cdecl		u32	crates/engine/src/units/bshavok/bhknicollisionobject.rs			
 00c6cd90	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs			0:32:0:
 00c6cee0	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs		i128	0:32:0:
 00c6d0e0	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs			0:32:0:
 00c6d0f0	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs		i96	0:32:0:
 00c6d250	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs			0:32:0:
 00c6d310	cdecl	ptr	u32	crates/engine/src/units/bshavok/bhkcharactercontroller.rs			0:32:0:
+00c7fa60	cdecl		u32	crates/engine/src/units/bshavok/bhkutilfunctions.rs			
+00c81570	cdecl		u32	crates/engine/src/units/bshavok/bhkblendcollisionobject.rs			
+00c86430	thiscall	ptr	f32	crates/engine/src/units/havok_sdk/hkpmotion.rs		i-1,i68	0:224:0:204.4
+00c87c80	cdecl		u32	crates/engine/src/units/bshavok/bhkrefobject.rs			
+00c88370	cdecl		u32	crates/engine/src/units/bshavok/weaponobject.rs			
+00c88400	cdecl		u32	crates/engine/src/units/bshavok/weaponobject.rs			
+00c8a790	cdecl		u32	crates/engine/src/units/bshavok/bhkspringaction.rs			
+00c8cce0	cdecl	ptr	bool	crates/engine/src/units/bshavok/bhkrigidbody.rs		i3,i6,i1	0:32:0:0.4
+00c8d4a0	thiscall	ptr	u32	crates/engine/src/units/bshavok/bhkrigidbody.rs		i8	0:240:0:215.1
+00c8ff70	cdecl		u32	crates/engine/src/units/bshavok/bhkblendcollisionobjectaddrotation.rs			
+00c90350	cdecl	ptr	u32	crates/engine/src/units/unplaced/run_00c90350.rs			0:32:0:
+00c903d0	cdecl		u32	crates/engine/src/units/havok_sdk/hkreferencedobject.rs			
+00c91110	thiscall	ptr	ptr	crates/engine/src/units/havok_sdk/hkpworld.rs			0:464:0:444.4
+00c98210	cdecl	f32,f32	f32	crates/engine/src/units/unplaced/run_00c98210.rs		i5	
+00c99fe0	cdecl		u32	crates/engine/src/units/bshavok/bhkworldm.rs			
+00c9add0	cdecl		u32	crates/engine/src/units/bshavok/bhkblendcontroller.rs			
+00c9db70	cdecl	ptr	u32	crates/engine/src/units/havok_sdk/hkpboxshape.rs		i8	0:32:0:
+00c9e0f0	cdecl	f32,f32	f32	crates/engine/src/units/havok_sdk/run_00c9e0f0.rs		i65	
+00c9e810	thiscall	ptr	ptr	crates/engine/src/units/havok_sdk/hkpshapephantom.rs			0:32:0:
+00ca34b0	cdecl		u32	crates/engine/src/units/bshavok/hkpackednitristripsshape.rs			
+00ca3550	cdecl	ptr	u32	crates/engine/src/units/bshavok/hkpackednitristripsshape.rs		i23	0:32:0:
+00ca3b10	thiscall	ptr	bool	crates/engine/src/units/bshavok/hkpackednitristripsshape.rs			0:32:0:4.1
+00ca5300	cdecl		u32	crates/engine/src/units/bshavok/bhkpackednitristripsshape.rs			
+00ca6600	cdecl		u32	crates/engine/src/units/bshavok/bhknitristripsshape.rs			
+00ca9600	thiscall	ptr	u32	crates/engine/src/units/unplaced/run_00ca9580.rs			0:48:0:16.4
+00ca98e0	cdecl		f32	crates/engine/src/units/bshavok/bhkmalleableconstraint.rs		f7f7fffee	
+00ca98f0	cdecl		u8	crates/engine/src/units/bshavok/bhkmalleableconstraint.rs		i-1	
+00ca9910	cdecl		u32	crates/engine/src/units/bshavok/bhkmalleableconstraint.rs			
+00cac900	thiscall	ptr	ptr	crates/engine/src/units/unplaced/run_00cac900.rs			0:32:0:
+00cb1810	cdecl	i32	u32	crates/engine/src/units/havok_sdk/hkmap.rs		i8,i4	
+00cb3060	cdecl		u32	crates/engine/src/units/bshavok/bhkrigidbodyt.rs			
+00cb7460	thiscall	ptr,u32	u32	crates/engine/src/units/havok_sdk/hkpworldoperationutil.rs		i512	0:32:0:0.4;8.4
+00cb8460	cdecl		u32	crates/engine/src/units/bshavok/bhkorienthingedbodyaction.rs			
+00cb9250	cdecl		u32	crates/engine/src/units/bshavok/bhkforcecontroller.rs			
+00cb9b50	cdecl		u32	crates/engine/src/units/bshavok/bhkragdolltemplate.rs			
+00cb9c00	cdecl		u32	crates/engine/src/units/bshavok/bhkragdolltemplate.rs			
+00cba1c0	cdecl		u32	crates/engine/src/units/bshavok/bhkragdolltemplate.rs			
+00cbaf80	cdecl		u32	crates/engine/src/units/bshavok/bhkragdolltemplate.rs			
+00cbb8a0	cdecl		u32	crates/engine/src/units/havok_sdk/hkpmousespringaction.rs			
+00cc04c0	cdecl		u32	crates/engine/src/units/havok_sdk/hkostream.rs			
+00cc0770	cdecl		u32	crates/engine/src/units/havok_sdk/hkostream.rs			
+00cc1280	cdecl		u32	crates/engine/src/units/unplaced/run_00cc1190.rs			
+00cc1e30	cdecl		u32	crates/engine/src/units/bshavok/bhkextradata.rs			
+00cc2b30	cdecl		u32	crates/engine/src/units/bshavok/bhkspringaction.rs			
+00cc32e0	cdecl		u32	crates/engine/src/units/bshavok/bhkmotoraction.rs			
+00cc32f0	cdecl		u32	crates/engine/src/units/bshavok/bhkangulardashpotaction.rs		i48	
+00cc3a20	cdecl		u32	crates/engine/src/units/bshavok/bhkdashpotaction.rs			
+00cc41f0	cdecl		u32	crates/engine/src/units/bshavok/bhkangulardashpotaction.rs			
+00cc4860	cdecl		u32	crates/engine/src/units/bshavok/bhkbreakableconstraint.rs			
+00cc5100	cdecl		u32	crates/engine/src/units/bshavok/bhkwheelconstraint.rs			
+00cc5ed0	cdecl		u32	crates/engine/src/units/bshavok/bhkragdolllimitsconstraint.rs			
+00cc74c0	cdecl		u32	crates/engine/src/units/bshavok/bhkprismaticconstraint.rs			
+00cc74d0	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexsweepshape.rs		i20	
+00cc7d70	cdecl		u32	crates/engine/src/units/bshavok/bhkfixedconstraint.rs			
+00cc7d80	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexlistshape.rs		i28	
+00cc7d90	cdecl		u32	crates/engine/src/units/bshavok/bhkfixedconstraint.rs			
+00cc84f0	cdecl		u32	crates/engine/src/units/bshavok/bhkhingelimitsconstraint.rs			
+00cc8d50	cdecl		u32	crates/engine/src/units/bshavok/bhkballsocketconstraintchain.rs			
+00cc8d60	cdecl		u32	crates/engine/src/units/bshavok/bhkballsocketconstraintchain.rs		i44	
+00cc8d70	cdecl		u32	crates/engine/src/units/bshavok/bhkballsocketconstraintchain.rs			
+00cc9db0	cdecl		u32	crates/engine/src/units/bshavok/bhkmoppbvtreeshape.rs			
+00cc9dc0	cdecl		u32	crates/engine/src/units/bshavok/bhkmoppbvtreeshape.rs		i16	
+00cca940	cdecl		u32	crates/engine/src/units/bshavok/bhktriangleshape.rs			
+00ccb130	cdecl		u32	crates/engine/src/units/bshavok/bhkplaneshape.rs			
+00ccb140	cdecl		u32	crates/engine/src/units/bshavok/bhkcylindershape.rs		i64	
+00ccb150	cdecl		u32	crates/engine/src/units/bshavok/bhkplaneshape.rs			
+00ccb990	cdecl		u32	crates/engine/src/units/bshavok/bhkextendedmeshshape.rs			
+00ccba20	thiscall	ptr,u32	bool	crates/engine/src/units/bshavok/bhkextendedmeshshape.rs			0:32:0:
+00ccbb30	cdecl		u32	crates/engine/src/units/bshavok/bhkextendedmeshshape.rs			
+00ccbb40	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexverticesshape.rs		i32	
+00ccd0f0	cdecl		u32	crates/engine/src/units/bshavok/bhkcylindershape.rs			
+00ccdc30	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexverticesshape.rs			
+00cce970	cdecl		u32	crates/engine/src/units/bshavok/bhkconvextransformshape.rs			
+00cce980	cdecl		u32	crates/engine/src/units/bshavok/bhkconvextransformshape.rs		i80	
+00ccf550	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexsweepshape.rs			
+00ccf7b0	cdecl		u32	crates/engine/src/units/bshavok/bhkconvexlistshape.rs			
+00cd2890	cdecl		u32	crates/engine/src/units/havok_sdk/run_00cd2890.rs			
+00cd3c80	cdecl		u32	crates/engine/src/units/bshavok/bhkcharacterstateprojectile.rs		i6	
+00cd4b50	cdecl		u32	crates/engine/src/units/havok_sdk/hkmatrix3.rs			
+00cd7f20	cdecl		u32	crates/engine/src/units/bshavok/bhkcharcontrollershape.rs			
+00cd8050	cdecl	ptr	u32	crates/engine/src/units/havok_sdk/hkpsphereshape.rs		i1	0:32:0:
+00cf41b0	cdecl		u32	crates/engine/src/units/bshavok/bhkpositionconstraintmotor.rs			
+00cf43f0	cdecl		u32	crates/engine/src/units/bshavok/bhkvelocityconstraintmotor.rs			
+00cf45f0	cdecl		u32	crates/engine/src/units/bshavok/bhkspringdamperconstraintmotor.rs			
+00cf4790	cdecl	u32	u32	crates/engine/src/units/bshavok/bhkconstraintmanager.rs		i13	
+00cf4ef0	cdecl		u32	crates/engine/src/units/havok_sdk/hkpspringaction.rs			
+00cf5830	thiscall	ptr	i32	crates/engine/src/units/havok_sdk/run_00cf56f0.rs			0:48:0:12.4;22.2
+00cf58f0	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/hkptransformshape.rs			0:32:0:
+00cf69b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00cf69b0.rs			
+00cfdad0	cdecl		u32	crates/engine/src/units/havok_sdk/hkpsimpleconstraintcontactmgr.rs			
+00d078d0	cdecl		u32	crates/engine/src/units/havok_sdk/hkpsimulationisland.rs			
+00d081e0	thiscall	ptr	ptr	crates/engine/src/units/havok_sdk/hkplinkedcollidable.rs			0:32:0:
+00d107a0	cdecl		u32	crates/engine/src/units/havok_sdk/hkpnullagent.rs			
+00d10ac0	cdecl	ptr	u32	crates/engine/src/units/havok_sdk/hkp3axissweep.rs			0:32:0:
+00d11620	thiscall	ptr	i32	crates/engine/src/units/havok_sdk/hkp3axissweep.rs			0:192:0:164.4
+00d11630	thiscall	ptr	i32	crates/engine/src/units/havok_sdk/hkp3axissweep.rs			0:240:0:164.4;208.4
+00d19d70	cdecl	u16,u16	u16	crates/engine/src/units/havok_sdk/hkp3axissweep.rs			
+00d1f210	thiscall	ptr,u32,ptr	u32	crates/engine/src/units/havok_sdk/hkpshapecontainer.rs			0:32:0:4.4|2:32:0:
+00d1ff10	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/hkptriangleshape.rs			0:48:0:23.1
+00d213d0	thiscall	ptr	ptr	crates/engine/src/units/unplaced/run_00d213d0.rs			0:32:0:
+00d22350	cdecl	ptr	u32	crates/engine/src/units/havok_sdk/hkpcapsuleshape.rs		i2	0:32:0:
+00d27560	cdecl		u32	crates/engine/src/units/havok_sdk/hkbufferedstreamwriter.rs			
+00d2a5f0	thiscall	ptr	i32	crates/engine/src/units/havok_sdk/hkpmultisphereshape.rs			0:48:0:16.4
+00d47f90	cdecl		u32	crates/engine/src/units/havok_sdk/run_00d47f90.rs			
+00d48360	cdecl		u32	crates/engine/src/units/havok_sdk/run_00d48360.rs			
+00d495f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00d49530.rs			
+00d571b0	cdecl	ptr	u32	crates/engine/src/units/havok_sdk/hkpcylindershape.rs		i18	0:32:0:
+00d58d10	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/hkpconvexverticesshape.rs			0:96:0:76.4
+00d5d760	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/hkpconvextransformshape.rs			0:32:0:
+00d5e0f0	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/run_00d5e0c0.rs			0:32:0:
+00d6ae50	cdecl		u32	crates/engine/src/units/havok_sdk/run_00d6ae10.rs	00cb0a70	i32768	
+00d9f6e0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00d9f6e0.rs			
+00d9fc60	cdecl		u32	crates/engine/src/units/havok_sdk/hkpdefaulttoiresourcemgr.rs			
+00da0780	cdecl		u32	crates/engine/src/units/havok_sdk/run_00da0010.rs	00cb0a70		
+00da07d0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00da0010.rs	00cb0a70		
+00da0910	cdecl		u32	crates/engine/src/units/havok_sdk/run_00da0910.rs			
+00da0950	cdecl		u32	crates/engine/src/units/havok_sdk/run_00da0910.rs			
+00da0b20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00da0910.rs			
+00db7c40	cdecl		u32	crates/engine/src/units/havok_sdk/run_00db7c40.rs	00cb0a70		
+00dc0eb0	cdecl		u32	crates/engine/src/units/havok_sdk/hknativepackfileutils.rs			
+00dc0fb0	cdecl		u32	crates/engine/src/units/havok_sdk/hkversionutil.rs			
+00dd5ea0	thiscall	ptr	u32	crates/engine/src/units/havok_sdk/hkpconvextranslateshape.rs			0:32:0:
+00dd73d0	cdecl	u32,u32	u32	crates/engine/src/units/havok_sdk/hkfreelist.rs		i16	
+00dfb590	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfb2b0.rs			
+00dfb8d0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfb8d0.rs			
+00dfba10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfba10.rs	00cb0a70		
+00dfbb70	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfba10.rs			
+00dfbd30	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfbd30.rs			
+00dfbe20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfbdf0.rs	00cb0a70		
+00dfbf60	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfbf60.rs			
+00dfc070	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc070.rs			
+00dfc140	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc140.rs			
+00dfc290	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc290.rs			
+00dfc2b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc290.rs			
+00dfc480	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc400.rs			
+00dfc530	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc530.rs			
+00dfc630	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfc6d0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfc740	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfc910	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfc9a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfca30	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcaa0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcb10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcc00	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcc70	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcce0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcd50	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfcea0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfd120	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfc630.rs			
+00dfd800	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfd200.rs	00cb0a70		
+00dfd9b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfd9b0.rs	00cb0a70		
+00dfdb60	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfda80.rs			
+00dfdb80	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfda80.rs			
+00dfde50	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfde50.rs			
+00dfdfc0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfde50.rs			
+00dfe2f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe280.rs	00ce5360		
+00dfe350	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe280.rs			
+00dfe4a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe440.rs			
+00dfe510	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe510.rs			
+00dfe5e0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe5b0.rs	00cb0a70		
+00dfe6a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe6a0.rs			
+00dfe710	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe710.rs			
+00dfe9b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfe9b0.rs	00cb0a70		
+00dfeb00	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeb00.rs			
+00dfeb70	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeb70.rs			
+00dfebe0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfec20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfec80	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfeca0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfece0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfed20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfebe0.rs			
+00dfee10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfee10.rs			
+00dfeeb0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeeb0.rs			
+00dfeef0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeeb0.rs			
+00dfef40	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeeb0.rs			
+00dfef90	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeeb0.rs	00cb0a70		
+00dff000	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dfeeb0.rs			
+00dff0e0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs			
+00dff130	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs	00cb0a70		
+00dff220	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs	00cb0a70		
+00dff2b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs	00cb0a70		
+00dff380	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs	00cb0a70		
+00dff430	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs			
+00dff5f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs			
+00dff610	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs			
+00dff630	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff0e0.rs			
+00dff9f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dff990.rs	00cb0a70		
+00dffc20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffb60.rs	00cb0a70		
+00dffc90	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffb60.rs			
+00dffdb0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dffe10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dffe50	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dffeb0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dffef0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dfff50	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00dffff0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00dffdb0.rs			
+00e00150	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00190	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e001f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs	00cb0a70		
+00e00290	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs	00cb0a70	i32768	
+00e00320	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00360	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00480	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e005a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00780	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e007e0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00820	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e000e0.rs			
+00e00970	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00970.rs			
+00e00a10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00970.rs			
+00e00b30	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00970.rs			
+00e00d20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00970.rs			
+00e00dc0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00970.rs			
+00e00ed0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00ed0.rs			
+00e00f40	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00ed0.rs			
+00e010b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00ed0.rs			
+00e01130	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e00ed0.rs			
+00e01370	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01230.rs			
+00e013e0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01230.rs			
+00e01440	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01230.rs			
+00e01490	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01230.rs	00cb0a70		
+00e01540	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs			
+00e01580	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs			
+00e015c0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs			
+00e01670	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs			
+00e016b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs			
+00e01710	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01540.rs	00cb0a70		
+00e01830	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e017f0.rs	00cb0a70		
+00e018f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e018f0.rs			
+00e01a00	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01a00.rs			
+00e01a40	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01a00.rs			
+00e01b20	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01b20.rs			
+00e01c60	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01c30.rs	00cb0a70		
+00e01d10	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01d10.rs	00cb0a70		
+00e01eb0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01e50.rs	00cb0a70		
+00e01f60	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e01f60.rs			
+00e02180	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e020f0.rs	00cb0a70		
+00e022a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e022a0.rs	00cb0a70		
+00e02370	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02370.rs			
+00e023b0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02370.rs			
+00e02490	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02490.rs			
+00e024d0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02490.rs			
+00e02510	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02490.rs			
+00e02550	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02490.rs			
+00e02590	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02490.rs			
+00e02640	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e02640.rs			
+00e026f0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e026f0.rs			
+00e027a0	cdecl		u32	crates/engine/src/units/havok_sdk/run_00e026f0.rs			

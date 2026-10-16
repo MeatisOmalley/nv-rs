@@ -47,6 +47,17 @@ pub struct Access {
     pub passed: Vec<String>,
     /// The pointer itself is stored somewhere.
     pub escapes: bool,
+    /// The input's value is used at all (recorded for the registers no
+    /// standard convention passes arguments in: eax, ebx, esi, edi, ebp).
+    pub used: bool,
+}
+
+impl Access {
+    /// Memory is read or written through the input (not only passed on or
+    /// compared).
+    pub fn dereferenced(&self) -> bool {
+        self.unknown || !self.reads.is_empty() || !self.writes.is_empty() || !self.chases.is_empty()
+    }
 }
 
 /// Parses one `arg_access` cell: `ecx=r4.4,w8.2|s0=r0.4,c12`.
@@ -74,6 +85,7 @@ pub fn parse_access(cell: &str) -> Option<BTreeMap<String, Access>> {
                 "c" => a.chases.push(rest.parse().ok()?),
                 "p" => a.passed.push(rest.to_string()),
                 "e" => a.escapes = true,
+                "u" => a.used = true,
                 _ => return None,
             }
         }
@@ -261,6 +273,8 @@ mod tests {
         assert_eq!(e.passed, vec!["00401000".to_string()]);
         assert!(e.escapes && !e.unknown);
         assert!(a["s0"].unknown);
+        let r = parse_access("eax=u|ecx=r0.4").unwrap();
+        assert!(r["eax"].used && !r["eax"].dereferenced() && !r["ecx"].used);
         assert!(parse_access("-").is_none());
         assert_eq!(parse_access("").unwrap().len(), 0);
     }

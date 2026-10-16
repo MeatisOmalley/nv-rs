@@ -51,7 +51,9 @@
 //   arg_access  from the decompiler's data flow, per input used as a
 //               pointer, what goes through it: input=items|input=items, inputs
 //               ecx, edx, s<n> (stack argument n bytes past the return
-//               address); items r<off>.<size> / w<off>.<size> (load / store at
+//               address), eax, ebx, esi, edi, ebp (register arguments of
+//               whole-program optimized code); items u (eax..ebp: the value is
+//               used at all), r<off>.<size> / w<off>.<size> (load / store at
 //               a byte offset), r? / w? (offset unknown), c<off> (the pointer
 //               loaded from <off> is dereferenced), p<callee> (passed to a
 //               call, p? for an indirect one), e (the pointer itself is
@@ -364,7 +366,9 @@ public class NvPurity extends GhidraScript {
      *
      * arg_access lists, per input that is used as a pointer, what is done through it, as
      * {@code <input>=<item>,<item>...} joined by {@code |}. Inputs: {@code ecx}, {@code edx},
-     * {@code s<n>} (the stack argument n bytes past the return address). Items:
+     * {@code s<n>} (the stack argument n bytes past the return address), and {@code eax},
+     * {@code ebx}, {@code esi}, {@code edi}, {@code ebp} (registers no standard convention passes
+     * arguments in, with the item {@code u} when the value is used at all). Items:
      * {@code r<off>.<size>} / {@code w<off>.<size>} a load / store at a byte offset from the
      * argument; {@code r?} / {@code w?} at an offset the data flow can't pin down; {@code c<off>}
      * the pointer loaded from {@code <off>} is itself dereferenced; {@code p<callee>} the pointer
@@ -405,6 +409,12 @@ public class NvPurity extends GhidraScript {
                     owner.put(in, name);
                     offset.put(in, 0L);
                     work.add(in);
+                    // The decompiler drops idioms that name a register without using its value
+                    // (MOV EDI,EDI; LEA EBX,[EBX]; OR EAX,-1) and saved registers, so an input
+                    // left here is an argument (00df9ae0 takes its seed in EAX, #202).
+                    if (OTHER_REGS.contains(name.toUpperCase()) && in.getDescendants().hasNext()) {
+                        add(acc, name, "u");
+                    }
                 }
             }
         }
@@ -618,7 +628,10 @@ public class NvPurity extends GhidraScript {
         return bits >= 64 ? v : (v << (64 - bits)) >> (64 - bits);
     }
 
-    /** ecx, edx, or s<n> for a stack argument n bytes past the return address; null otherwise. */
+    /**
+     * ecx, edx, s<n> for a stack argument n bytes past the return address, or eax, ebx, esi, edi,
+     * ebp; null otherwise.
+     */
     private String inputName(ghidra.program.model.pcode.Varnode in) {
         Address a = in.getAddress();
         if (a.isStackAddress()) {
@@ -638,9 +651,15 @@ public class NvPurity extends GhidraScript {
             if (n.equals("EDX") || n.equals("RDX")) {
                 return "edx";
             }
+            if (OTHER_REGS.contains(n)) {
+                return n.toLowerCase();
+            }
         }
         return null;
     }
+
+    /** Registers no standard convention passes arguments in (whole-program optimized code does). */
+    private static final java.util.Set<String> OTHER_REGS = java.util.Set.of("EAX", "EBX", "ESI", "EDI", "EBP");
 
     private static final int MAX_CONSTS = 32;
 

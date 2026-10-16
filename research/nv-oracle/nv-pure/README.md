@@ -38,7 +38,11 @@ A translation is on the list when all of these hold:
   pop exactly the stack words the signature leaves), and the stack-argument bytes
   the body reads (never more than the signature passes). Functions where nothing
   fits are listed by `nv-pure list` as convention mismatches; each is worth a look,
-  since a missing or extra parameter in a translation shows up this way;
+  since a missing or extra parameter in a translation shows up this way. A body
+  with no `RET` (a thunk that tail-jumps) has no checkable convention and is
+  skipped as `NoRet`, not listed as a mismatch; one that takes an argument in
+  EAX, EBX, ESI or EDI (read on entry before any write) is skipped as
+  `RegisterInput`, since nv-call passes only ECX and EDX;
 - it doesn't take a leading `f64` in x87 ST0 (`nv-call` can't preset ST0).
 
 `check` also skips a listed function when it or one of its callees is not
@@ -48,7 +52,9 @@ registered in the engine at the time of the run.
 
 `NvPurity.java` follows each input (ECX, EDX, each stack argument) through the
 decompiler's data flow (copies, casts, constant offsets, merges) to every LOAD and
-STORE it reaches, and writes per input the offsets and sizes read and stored, pointer
+STORE it reaches (a merge keeps a known offset only when all its inputs come from
+the same input at the same offset, so a pointer walked in a loop, `p = p->next`,
+counts as an unknown offset), and writes per input the offsets and sizes read and stored, pointer
 fields that are dereferenced, calls it is passed to and whether it escapes
 (`arg_access`), plus the LOADs/STOREs no input explains (`untracked_loads`,
 `untracked_stores`). A function with pointer parameters is listed when:
@@ -58,7 +64,8 @@ fields that are dereferenced, calls it is passed to and whether it escapes
   (that needs nested buffers), not passed to a callee, not stored;
 - nothing else is read or stored through a pointer (`untracked_* = 0`), and its
   callees read through no pointer;
-- no parameter the Rust signature types as a scalar is used as a pointer by the exe.
+- no parameter the Rust signature types as a scalar is used as a pointer by the exe,
+  and no input that matches no parameter is dereferenced.
 
 Each pointer parameter gets a buffer (`buffers` in `pure.tsv`:
 `param:size:bias:off.size;...`): big enough for every field read plus slack, with a
@@ -102,7 +109,10 @@ float stores" rule.
    (typed edges by size, the function's constants, and for 4-byte fields the
    pointer arguments' own values, so `this->x == other` can be true), first
    shifted per field, then in lockstep (all fields the same value, so fields can
-   equal each other).
+   equal each other). Every distinct fill runs once whatever `--count` is (up to
+   68: four plain fills, then two passes of at most 32 rounds), so a pointer
+   function can get more vectors than `--count`; the scalar lists then add theirs,
+   each paired with one of the fills.
 
 ## Verdicts
 
@@ -117,7 +127,8 @@ float stores" rule.
 | `FaultMismatch` | Both failed, but at different addresses (inside the engine's mapped data) or in different ways. | yes |
 | `Convention` | The exe popped a different number of bytes than the listed convention: the list is wrong, not the translation. | yes |
 | `BufferMismatch` | Same result, but a buffer differs after the call (one side stored where the other didn't). | yes |
-| `ExeTimeout` | The exe did not finish the vector within `--exe-timeout` (default 10 s; typically a loop over a count taken from a fuzzed field). nv-call is stopped and restarted after it; not run on the engine side. | no |
+| `DataFlowMiss` | The exe hit an access violation, or ran past `--exe-timeout`, in a pointer-tier function, which only reads its buffers at known offsets and so can neither fault nor loop on them: the data flow missed a pointer (one walked in a loop), and the list is wrong, not the translation. | yes |
+| `ExeTimeout` | The exe did not finish the vector within `--exe-timeout` (default 10 s; typically a loop over a count taken from a fuzzed scalar; in a pointer-tier function it is a `DataFlowMiss`). nv-call is stopped and restarted after it; not run on the engine side. | no |
 | `ExeSlow` | The exe took over `--slow-ms` (default 1000 ms); not run on the engine side, where a correct translation may take much longer. | no |
 | `ExeCrash` | nv-call's process ended on the vector (an exception outside the harness's reach); restarted after it. | no |
 
@@ -191,6 +202,7 @@ folder.
   | nv-call reports another arena base / exits before its header / exits 0 with vectors left | the check stops with that message |
   | a translation loops forever on one vector | the watchdog stops the check after `--rust-timeout`, naming the vector and its inputs |
   | a translation allocates 256 MB (heap top reaches the arena) | the heap guard stops the check |
+  | the list misses a pointer walked in a loop (the listing from before the merge fix, for 005f65d0, 00a089c0, 00c8d0d0) | `DataFlowMiss` on all three (exe access violations and an exe timeout), where they had passed as inconclusive |
 
 ## Known limits
 

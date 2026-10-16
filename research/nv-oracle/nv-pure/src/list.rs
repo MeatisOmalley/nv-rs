@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use crate::purity::{self, Facts};
+use crate::purity::{self, Access, Facts};
 use crate::source::{Source, Ty};
 
 /// One checkable function.
@@ -105,6 +105,12 @@ pub enum Skip {
     /// The exe's stack cleanup or register use does not fit the Rust
     /// signature under any convention (a candidate translation issue, listed).
     ConventionMismatch,
+    /// An argument in a register other than ECX/EDX (EAX, EBX, ESI, EDI,
+    /// EBP), which nv-call cannot pass.
+    RegisterInput,
+    /// No RET in the body (a thunk that tail-jumps): the stack cleanup, and
+    /// so the convention, can't be checked.
+    NoRet,
     /// A leading `f64` that the exe takes in x87 ST0 (`nv-call` cannot
     /// preset ST0).
     St0Input,
@@ -126,6 +132,9 @@ pub enum Skip {
     /// A parameter the Rust signature types as a scalar is used as a pointer
     /// by the exe.
     ScalarUsedAsPointer,
+    /// Pointer tier: the exe dereferences an input (register or stack slot)
+    /// that matches no parameter.
+    UnmatchedInput,
 }
 
 pub struct Listing {
@@ -178,9 +187,6 @@ fn convention(params: &[Ty], f: &Facts) -> Result<&'static str, String> {
             "{cc}: pops {} bytes, Rust leaves {} stack words",
             f.ret_pop, stack_words
         ));
-    }
-    if f.ret_pop < 0 {
-        return Err("no RET in the body".into());
     }
     if f.stack_args > 4 * stack_words as i64 {
         return Err(format!(
@@ -251,14 +257,27 @@ pub fn build(src: &Source, facts: &BTreeMap<u32, Facts>) -> Listing {
         let mut with_regs = f.clone();
         if let Some(args) = &f.args {
             for (name, reg) in [("ecx", "ECX"), ("edx", "EDX")] {
-                let dereferenced = args.get(name).is_some_and(|a| {
-                    a.unknown || !a.reads.is_empty() || !a.writes.is_empty() || !a.chases.is_empty()
-                });
+                let dereferenced = args.get(name).is_some_and(Access::dereferenced);
                 if dereferenced && !with_regs.reg_in.iter().any(|r| r == reg) {
                     with_regs.reg_in.push(reg.to_string());
                 }
             }
             with_regs.reg_in.sort();
+        }
+        // An argument in EAX, EBX, ESI, EDI or EBP (whole-program optimized
+        // code, #202), from the data flow: nv-call passes only ECX and EDX.
+        if f.args.as_ref().is_some_and(|args| {
+            args.keys()
+                .any(|k| matches!(k.as_str(), "eax" | "ebx" | "esi" | "edi" | "ebp"))
+        }) {
+            skip(Skip::RegisterInput);
+            continue;
+        }
+        // A body without a RET (a thunk that tail-jumps): its stack cleanup,
+        // and so its convention, is unknown. Not a translation issue.
+        if with_regs.ret_pop < 0 {
+            skip(Skip::NoRet);
+            continue;
         }
         let cc = match convention(&sig.params, &with_regs) {
             Ok(cc) => cc,
@@ -304,6 +323,15 @@ pub fn build(src: &Source, facts: &BTreeMap<u32, Facts>) -> Listing {
                     break;
                 }
                 bufs.push(Buf::from_reads(k, &a.reads));
+            }
+            // An input the exe dereferences that is none of the parameters
+            // (the convention check normally rules these out first).
+            if why.is_none()
+                && args
+                    .iter()
+                    .any(|(name, a)| !names.contains(name) && a.dereferenced())
+            {
+                why = Some(Skip::UnmatchedInput);
             }
             if let Some(w) = why {
                 skip(w);

@@ -70,6 +70,12 @@ pub enum Kind {
     /// nv-call's process ended on this vector (an exception outside the
     /// harness's reach). Inconclusive.
     ExeCrash,
+    /// The exe hit an access violation, or ran past `--exe-timeout`, in a
+    /// function listed as reading only its buffers at known offsets, which by
+    /// construction neither faults nor loops on: the data flow missed a
+    /// pointer (one walked in a loop, say), so the list, not the translation,
+    /// is wrong.
+    DataFlowMiss,
 }
 
 use crate::vectors::ARENA;
@@ -676,19 +682,6 @@ fn engine_side(
         for (i, case) in cs.iter().enumerate() {
             let id = format!("{:08x}_{i}", p.addr);
             progress.fetch_add(1, Ordering::Relaxed);
-            let unfinished = if exe.timed_out.contains(&id) {
-                Some(Kind::ExeTimeout)
-            } else if exe.crashed.contains(&id) {
-                Some(Kind::ExeCrash)
-            } else if exe.slow.contains(&id) {
-                Some(Kind::ExeSlow)
-            } else {
-                None
-            };
-            if let Some(k) = unfinished {
-                *report.counts.entry(k).or_insert(0) += 1;
-                continue;
-            }
             let shown = || {
                 let mut shown: Vec<String> = case
                     .args
@@ -704,6 +697,36 @@ fn engine_side(
                 }
                 shown.join(", ")
             };
+            let unfinished = if exe.timed_out.contains(&id) {
+                Some(Kind::ExeTimeout)
+            } else if exe.crashed.contains(&id) {
+                Some(Kind::ExeCrash)
+            } else if exe.slow.contains(&id) {
+                Some(Kind::ExeSlow)
+            } else {
+                None
+            };
+            // A read-only pointer function loops only over counts from its
+            // fields, with no varying reads: an exe that runs past the limit
+            // walked a pointer the data flow missed (005f65d0, 00a089c0).
+            if unfinished == Some(Kind::ExeTimeout) && !p.bufs.is_empty() {
+                *report.counts.entry(Kind::DataFlowMiss).or_insert(0) += 1;
+                *report.failing_functions.entry(p.addr).or_insert(0) += 1;
+                report.failures.push((
+                    p.addr,
+                    p.unit.clone(),
+                    id,
+                    shown(),
+                    "no result within --exe-timeout (a loop)".into(),
+                    String::new(),
+                    Kind::DataFlowMiss,
+                ));
+                continue;
+            }
+            if let Some(k) = unfinished {
+                *report.counts.entry(k).or_insert(0) += 1;
+                continue;
+            }
             if let Ok(mut c) = current.lock() {
                 *c = format!("{id} ({}) with [{}]", p.unit, shown());
             }
@@ -776,6 +799,11 @@ fn engine_side(
                 continue;
             };
             let (mut exe_text, mut rust_text, mut kind) = compare(p.ret, exe_out, &rust, want_pop);
+            if let (false, Outcome::Fault { name, .. }) = (p.bufs.is_empty(), exe_out) {
+                if name == "access_violation" {
+                    kind = Kind::DataFlowMiss;
+                }
+            }
             if kind == Kind::Match && !p.bufs.is_empty() {
                 let exe_b = exe_buffers.get(&id);
                 for (j, rb) in rust_bufs.iter().enumerate() {

@@ -688,10 +688,10 @@ pub fn vector_line_buffers(
     )
 }
 
-/// The buffers of a result line after the call: (id, [(name, bytes)]).
 /// A result line's buffers by name, after the call.
 pub type Buffers = Vec<(String, Vec<u8>)>;
 
+/// The buffers of a result line after the call: (id, [(name, bytes)]).
 pub fn parse_buffers(line: &str) -> Option<(String, Buffers)> {
     let v = Value::parse(line)?;
     if v.get("type")?.as_str()? != "result" {
