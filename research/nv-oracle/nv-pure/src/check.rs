@@ -189,11 +189,17 @@ fn compare(
                     // that address (mapped in nv-call's process) and failed later.
                     (_, Some(b)) if !IMAGE.contains(&b) => Kind::OutOfImageRead,
                     // Rust's own panics ("attempt to divide by zero", "... remainder with a
-                    // divisor of zero") and translations that model the fault explicitly.
+                    // divisor of zero") and translations that model the fault explicitly
+                    // ("integer divide error (#DE) in ...", "(divide error)").
                     _ if name == "integer_divide_by_zero"
-                        && ["divide by zero", "divisor of zero", "division by zero"]
-                            .iter()
-                            .any(|w| m.contains(w)) =>
+                        && [
+                            "divide by zero",
+                            "divisor of zero",
+                            "division by zero",
+                            "divide error",
+                        ]
+                        .iter()
+                        .any(|w| m.contains(w)) =>
                     {
                         Kind::BothFailed
                     }
@@ -932,6 +938,8 @@ mod tests {
             "attempt to divide by zero",
             "attempt to calculate the remainder with a divisor of zero",
             "hash map without buckets (division by zero in the game)",
+            "integer divide error (#DE) in 00e39e60: 3 / 0",
+            "00e062a0: the stride at +0x2a is zero (divide error)",
         ] {
             assert_eq!(
                 compare(Ty::U32, &div, &Err(m.into()), 0).2,

@@ -54,7 +54,9 @@ registered in the engine at the time of the run.
 decompiler's data flow (copies, casts, constant offsets, merges) to every LOAD and
 STORE it reaches (a merge keeps a known offset only when all its inputs come from
 the same input at the same offset, so a pointer walked in a loop, `p = p->next`,
-counts as an unknown offset), and writes per input the offsets and sizes read and stored, pointer
+counts as an unknown offset; functions with x87 code are decompiled once more with
+the return in ST0, since the decompiler otherwise drops loads that only feed a float
+result), and writes per input the offsets and sizes read and stored, pointer
 fields that are dereferenced, calls it is passed to and whether it escapes
 (`arg_access`), plus the LOADs/STOREs no input explains (`untracked_loads`,
 `untracked_stores`). A function with pointer parameters is listed when:

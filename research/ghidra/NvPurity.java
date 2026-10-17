@@ -310,10 +310,45 @@ public class NvPurity extends GhidraScript {
         new ThreadLocal<>();
     private ghidra.app.decompiler.DecompileOptions decompOptions;
 
+    /**
+     * The data-flow columns for the functions in {@code todo}. The decompiler only keeps
+     * computations that reach the return value, and it never infers a return in x87 ST0: a
+     * function returning a float there (with the usual DEFAULT prototype) is decompiled as
+     * returning EAX, and every load that only feeds the float is dropped as dead (00e37820 reads
+     * {@code this->p->v} for its result and showed only the read of {@code p}). So functions with
+     * x87 code are decompiled a second time with the return stored in ST0, inside a transaction
+     * that is always aborted, so the program is left as it was. Accesses are the union of the two
+     * passes, untracked counts the larger, and a function either pass failed on gets no result.
+     */
     private void argAccessAll(List<Function> order, List<Integer> todo, String[] out, int threads)
             throws Exception {
         decompOptions = new ghidra.app.decompiler.DecompileOptions();
         decompOptions.grabFromProgram(currentProgram);
+        String[] stored = new String[out.length];
+        argAccessPass(order, todo, stored, threads, "stored prototype");
+        String[] x87 = new String[out.length];
+        List<Integer> withX87 = new ArrayList<>();
+        for (int i : todo) {
+            if (usesX87(order.get(i))) {
+                withX87.add(i);
+            }
+        }
+        int tx = currentProgram.startTransaction(NAME + ": return overrides (always aborted)");
+        try {
+            returnInSt0(order, withX87);
+            argAccessPass(order, withX87, x87, threads, "return in ST0");
+        }
+        finally {
+            currentProgram.endTransaction(tx, false);
+        }
+        for (int i : todo) {
+            out[i] = mergeAccess(stored[i], x87[i]);
+        }
+    }
+
+    private void argAccessPass(List<Function> order, List<Integer> todo, String[] out, int threads,
+            String what) throws Exception {
+        println(NAME + ": data flow (" + what + ") for " + todo.size() + " functions");
         java.util.concurrent.ExecutorService pool =
             java.util.concurrent.Executors.newFixedThreadPool(threads);
         try {
@@ -327,19 +362,87 @@ public class NvPurity extends GhidraScript {
                 monitor.checkCancelled();
                 out[todo.get(k)] = futures.get(k).get();
                 if (k + 1 >= next) {
-                    println(NAME + ": data flow " + (k + 1) + "/" + todo.size());
+                    println(NAME + ": data flow (" + what + ") " + (k + 1) + "/" + todo.size());
                     next += Math.max(1, todo.size() / 10);
                 }
             }
         }
         finally {
             pool.shutdownNow();
+            pool.awaitTermination(1, java.util.concurrent.TimeUnit.MINUTES);
+            // Fresh decompilers for the next pass, so none keeps a prototype from this one.
             synchronized (decompilers) {
                 for (ghidra.app.decompiler.DecompInterface d : decompilers) {
                     d.dispose();
                 }
+                decompilers.clear();
             }
         }
+    }
+
+    /**
+     * Gives the functions a {@code float10} return stored in ST0 (explicit storage: with the
+     * "unknown" convention most functions have, a float10 return would otherwise go through a
+     * hidden pointer).
+     */
+    private void returnInSt0(List<Function> order, List<Integer> which) throws Exception {
+        ghidra.program.model.listing.VariableStorage st0 = new ghidra.program.model.listing.VariableStorage(
+            currentProgram, currentProgram.getLanguage().getRegister("ST0"));
+        for (int i : which) {
+            Function f = order.get(i);
+            try {
+                f.setCustomVariableStorage(true);
+                f.setReturn(ghidra.program.model.data.Float10DataType.dataType, st0,
+                    ghidra.program.model.symbol.SourceType.USER_DEFINED);
+            }
+            catch (Exception ex) {
+                // left as stored; that pass then repeats the stored-prototype result
+            }
+        }
+    }
+
+    /** Whether the body has any x87 instruction (only then can it return in ST0). */
+    private boolean usesX87(Function f) {
+        for (Instruction ins : currentProgram.getListing().getInstructions(f.getBody(), true)) {
+            if (ins.getMnemonicString().toUpperCase().startsWith("F")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Union of the passes' arg_access items, the largest untracked counts; "-" if any failed. */
+    private static String mergeAccess(String... cols) {
+        java.util.TreeMap<String, java.util.TreeSet<String>> acc = new java.util.TreeMap<>();
+        long loads = 0, stores = 0;
+        for (String col : cols) {
+            if (col == null) {
+                continue; // not in that pass (no x87 code)
+            }
+            String[] c = col.split("\t", -1);
+            if (c[0].equals("-")) {
+                return "-\t-1\t-1";
+            }
+            for (String part : c[0].split("\\|")) {
+                if (part.isEmpty()) {
+                    continue;
+                }
+                int eq = part.indexOf('=');
+                for (String item : part.substring(eq + 1).split(",")) {
+                    add(acc, part.substring(0, eq), item);
+                }
+            }
+            loads = Math.max(loads, Long.parseLong(c[1]));
+            stores = Math.max(stores, Long.parseLong(c[2]));
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, java.util.TreeSet<String>> e : acc.entrySet()) {
+            if (sb.length() > 0) {
+                sb.append('|');
+            }
+            sb.append(e.getKey()).append('=').append(String.join(",", e.getValue()));
+        }
+        return sb + "\t" + loads + "\t" + stores;
     }
 
     private ghidra.app.decompiler.DecompInterface decompilerForThisThread() {
