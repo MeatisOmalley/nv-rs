@@ -122,17 +122,18 @@ float stores" rule.
 | --- | --- | --- |
 | `Match` | Same bits (`bool`: AL zero/non-zero; `u8`/`u16`: low byte/word; floats: ST0 rounded to the type). | no |
 | `BothFailed` | Both failed the same way: the exe's access violation and the engine's unmapped read at the same address (or both divided by zero). | no |
-| `OutOfImageRead` | The engine stopped at memory it never maps (outside `.rdata`..`CONST`, e.g. a random table index landing in `.text`), which nv-call's process happened to have mapped. | no |
+| `OutOfImageRead` | The engine stopped at memory it never maps (outside `.rdata`..`CONST`, e.g. a random table index landing in `.text`), which nv-call's process happened to have mapped: when both sides failed, or when the exe returned a value and may itself read an address computed from its inputs (`computed_reads` in `pure.tsv`: the function or a callee has LOADs no input explains). Each one is listed in `coverage.tsv`. | no |
+| `RustStrayRead` | The exe returned a value, but the engine read memory it never maps, in a function whose exe reads only its buffers, image constants and the stack (`computed_reads` 0): the translation read memory the exe didn't, such as a number used as a pointer. | yes |
 | `Mismatch` | Different results. | yes |
 | `NanBits` | Both NaN, different sign or payload. | yes |
 | `ExeFaultOnly` / `RustPanicOnly` | One side failed. | yes |
 | `FaultMismatch` | Both failed, but at different addresses (inside the engine's mapped data) or in different ways. | yes |
 | `Convention` | The exe popped a different number of bytes than the listed convention: the list is wrong, not the translation. | yes |
 | `BufferMismatch` | Same result, but a buffer differs after the call (one side stored where the other didn't). | yes |
-| `DataFlowMiss` | The exe hit an access violation, or ran past `--exe-timeout`, in a pointer-tier function, which only reads its buffers at known offsets and so can neither fault nor loop on them: the data flow missed a pointer (one walked in a loop), and the list is wrong, not the translation. | yes |
+| `DataFlowMiss` | The exe hit an access violation, ran past `--exe-timeout` or ended nv-call's process, in a pointer-tier function, which only reads its buffers at known offsets and so can neither fault nor loop on them: the data flow missed a pointer (one walked in a loop), and the list is wrong, not the translation. | yes |
 | `ExeTimeout` | The exe did not finish the vector within `--exe-timeout` (default 10 s; typically a loop over a count taken from a fuzzed scalar; in a pointer-tier function it is a `DataFlowMiss`). nv-call is stopped and restarted after it; not run on the engine side. | no |
 | `ExeSlow` | The exe took over `--slow-ms` (default 1000 ms); not run on the engine side, where a correct translation may take much longer. | no |
-| `ExeCrash` | nv-call's process ended on the vector (an exception outside the harness's reach); restarted after it. | no |
+| `ExeCrash` | nv-call's process ended on the vector (an exception outside the harness's reach); restarted after it. In a pointer-tier function it is a `DataFlowMiss`. | no |
 
 All three are listed in `coverage.tsv`. The engine side runs on a worker thread under
 a watchdog: one vector running past `--rust-timeout` (default 120 s) on a vector the
@@ -195,12 +196,21 @@ folder.
   | spurious write | an extra store into `this` | yes (`BufferMismatch`) |
   | swapped pointer comparisons | two `this->field == other` tests reordered | yes, after pointer values joined the field pools and lockstep fills were added |
 
+- **Stray-read mutation test**, a number used as a pointer, which used to pass as
+  `OutOfImageRead` (found in review, 00448a60):
+
+  | Genre | Planted bug | Caught |
+  | --- | --- | --- |
+  | arguments swapped | `this->+0xC & mask` → `(mask)->+0xC & this` (00448a60) | yes (`RustStrayRead`, 79 of 79 vectors) |
+  | scalar argument dereferenced | `(key >> 4) % 1001` → `(*key >> 4) % 1001` (0043c530, scalar tier) | yes (`RustStrayRead`, 64 of 64) |
+  | field value dereferenced | `this->+0x78` → `*(this->+0x78)` (00407820) | yes (16 `RustStrayRead`, 1 `Mismatch`) |
+
 - **Fault injection** for the safety paths, with a stand-in for nv-call (through
   `NV_CALL`) and a planted translation:
 
   | Fault | Result |
   | --- | --- |
-  | nv-call crashes on one vector, hangs on another, is slow on two | `ExeCrash`, `ExeTimeout`, `ExeSlow` on exactly those vectors; nv-call restarted twice; every other vector's verdict identical to a clean run |
+  | nv-call crashes on one vector, hangs on another, is slow on two | `ExeCrash`, `ExeTimeout`, `ExeSlow` on exactly those vectors (the first two read as `DataFlowMiss` in pointer-tier functions); nv-call restarted twice; every other vector's verdict identical to a clean run |
   | nv-call reports another arena base / exits before its header / exits 0 with vectors left | the check stops with that message |
   | a translation loops forever on one vector | the watchdog stops the check after `--rust-timeout`, naming the vector and its inputs |
   | a translation allocates 256 MB (heap top reaches the arena) | the heap guard stops the check |

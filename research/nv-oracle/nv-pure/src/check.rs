@@ -70,12 +70,18 @@ pub enum Kind {
     /// nv-call's process ended on this vector (an exception outside the
     /// harness's reach). Inconclusive.
     ExeCrash,
-    /// The exe hit an access violation, or ran past `--exe-timeout`, in a
-    /// function listed as reading only its buffers at known offsets, which by
-    /// construction neither faults nor loops on: the data flow missed a
-    /// pointer (one walked in a loop, say), so the list, not the translation,
-    /// is wrong.
+    /// The exe hit an access violation, ran past `--exe-timeout` or ended
+    /// nv-call's process, in a function listed as reading only its buffers at
+    /// known offsets, which by construction neither faults nor loops on: the
+    /// data flow missed a pointer (one walked in a loop, say), so the list,
+    /// not the translation, is wrong.
     DataFlowMiss,
+    /// The exe returned a value, but the engine read memory it never maps,
+    /// in a function whose exe reads no address computed from its inputs
+    /// (`Pure::computed_reads` false): the translation read memory the exe
+    /// didn't, such as a number used as a pointer (arguments in the wrong
+    /// order, a field dereferenced that the exe only computes with).
+    RustStrayRead,
 }
 
 use crate::vectors::ARENA;
@@ -141,6 +147,9 @@ pub struct Report {
     /// signature drops bits a caller using ST0 directly would see.
     /// Informational; per function, the number of vectors.
     pub extended: BTreeMap<u32, usize>,
+    /// (address, vector id, engine panic) of every `OutOfImageRead`: listed
+    /// in coverage.tsv, since they say nothing about the result.
+    pub out_of_image: Vec<(u32, String, String)>,
 }
 
 fn expected_pop(p: &Pure) -> u32 {
@@ -500,6 +509,13 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
             unit(*a)
         );
     }
+    for (a, id, rust) in &report.out_of_image {
+        let _ = writeln!(
+            notes,
+            "{a:08x}\t{}\tout-of-image read (inconclusive): vector {id}, engine {rust}",
+            unit(*a)
+        );
+    }
     for (a, n) in &report.extended {
         let _ = writeln!(
             notes,
@@ -681,6 +697,7 @@ fn engine_side(
         varying: 0,
         constant: Vec::new(),
         extended: BTreeMap::new(),
+        out_of_image: Vec::new(),
     };
     for (p, cs) in cases {
         let want_pop = expected_pop(p);
@@ -714,8 +731,11 @@ fn engine_side(
             };
             // A read-only pointer function loops only over counts from its
             // fields, with no varying reads: an exe that runs past the limit
-            // walked a pointer the data flow missed (005f65d0, 00a089c0).
-            if unfinished == Some(Kind::ExeTimeout) && !p.bufs.is_empty() {
+            // walked a pointer the data flow missed (005f65d0, 00a089c0). An
+            // exe process that ends on the vector is read the same way (it
+            // can neither fault nor loop on its buffers).
+            let stuck = matches!(unfinished, Some(Kind::ExeTimeout | Kind::ExeCrash));
+            if stuck && !p.bufs.is_empty() {
                 *report.counts.entry(Kind::DataFlowMiss).or_insert(0) += 1;
                 *report.failing_functions.entry(p.addr).or_insert(0) += 1;
                 report.failures.push((
@@ -723,7 +743,11 @@ fn engine_side(
                     p.unit.clone(),
                     id,
                     shown(),
-                    "no result within --exe-timeout (a loop)".into(),
+                    if unfinished == Some(Kind::ExeTimeout) {
+                        "no result within --exe-timeout (a loop)".into()
+                    } else {
+                        "nv-call's process ended on this vector".into()
+                    },
                     String::new(),
                     Kind::DataFlowMiss,
                 ));
@@ -809,6 +833,20 @@ fn engine_side(
                 if name == "access_violation" {
                     kind = Kind::DataFlowMiss;
                 }
+            }
+            // The exe returned normally, reading only its buffers, image
+            // constants and the stack: an engine read anywhere else is the
+            // translation's own (00448a60 with its arguments swapped).
+            if kind == Kind::OutOfImageRead
+                && matches!(exe_out, Outcome::Value { .. })
+                && !p.computed_reads
+            {
+                kind = Kind::RustStrayRead;
+            }
+            if kind == Kind::OutOfImageRead {
+                report
+                    .out_of_image
+                    .push((p.addr, id.clone(), rust_text.clone()));
             }
             if kind == Kind::Match && !p.bufs.is_empty() {
                 let exe_b = exe_buffers.get(&id);

@@ -53,7 +53,8 @@
 //               ecx, edx, s<n> (stack argument n bytes past the return
 //               address), eax, ebx, esi, edi, ebp (register arguments of
 //               whole-program optimized code); items u (eax..ebp: the value is
-//               used at all), r<off>.<size> / w<off>.<size> (load / store at
+//               used at all; ecx, edx: used other than as a call argument),
+//               r<off>.<size> / w<off>.<size> (load / store at
 //               a byte offset), r? / w? (offset unknown), c<off> (the pointer
 //               loaded from <off> is dereferenced), p<callee> (passed to a
 //               call, p? for an indirect one), e (the pointer itself is
@@ -471,7 +472,8 @@ public class NvPurity extends GhidraScript {
      * {@code <input>=<item>,<item>...} joined by {@code |}. Inputs: {@code ecx}, {@code edx},
      * {@code s<n>} (the stack argument n bytes past the return address), and {@code eax},
      * {@code ebx}, {@code esi}, {@code edi}, {@code ebp} (registers no standard convention passes
-     * arguments in, with the item {@code u} when the value is used at all). Items:
+     * arguments in, with the item {@code u} when the value is used at all; ECX and EDX get
+     * {@code u} when used other than as a call argument). Items:
      * {@code r<off>.<size>} / {@code w<off>.<size>} a load / store at a byte offset from the
      * argument; {@code r?} / {@code w?} at an offset the data flow can't pin down; {@code c<off>}
      * the pointer loaded from {@code <off>} is itself dereferenced; {@code p<callee>} the pointer
@@ -516,6 +518,12 @@ public class NvPurity extends GhidraScript {
                     // (MOV EDI,EDI; LEA EBX,[EBX]; OR EAX,-1) and saved registers, so an input
                     // left here is an argument (00df9ae0 takes its seed in EAX, #202).
                     if (OTHER_REGS.contains(name.toUpperCase()) && in.getDescendants().hasNext()) {
+                        add(acc, name, "u");
+                    }
+                    // ECX/EDX used at all, as a number too (LEA [ECX*4] in 00d49c20), but not
+                    // when they only reach calls: the decompiler lets ECX flow into any callee
+                    // whose convention it doesn't know (_ftol2 and the like).
+                    if ((name.equals("ecx") || name.equals("edx")) && usedBeyondCalls(in)) {
                         add(acc, name, "u");
                     }
                 }
@@ -675,6 +683,45 @@ public class NvPurity extends GhidraScript {
             sb.append(e.getKey()).append('=').append(String.join(",", e.getValue()));
         }
         return sb + "\t" + untrackedLoads + "\t" + untrackedStores;
+    }
+
+    /**
+     * Whether a value reaches any operation other than a call argument, following copies, casts,
+     * merges and the INDIRECTs around calls.
+     */
+    private static boolean usedBeyondCalls(ghidra.program.model.pcode.Varnode start) {
+        java.util.ArrayDeque<ghidra.program.model.pcode.Varnode> todo = new java.util.ArrayDeque<>();
+        java.util.Set<ghidra.program.model.pcode.Varnode> seen = new java.util.HashSet<>();
+        todo.add(start);
+        while (!todo.isEmpty()) {
+            ghidra.program.model.pcode.Varnode v = todo.poll();
+            if (!seen.add(v)) {
+                continue;
+            }
+            java.util.Iterator<ghidra.program.model.pcode.PcodeOp> ds = v.getDescendants();
+            while (ds.hasNext()) {
+                ghidra.program.model.pcode.PcodeOp d = ds.next();
+                switch (d.getOpcode()) {
+                    case PcodeOp.COPY:
+                    case PcodeOp.CAST:
+                    case PcodeOp.MULTIEQUAL:
+                    case PcodeOp.INDIRECT:
+                        if (d.getOutput() != null) {
+                            todo.add(d.getOutput());
+                        }
+                        break;
+                    case PcodeOp.CALL:
+                    case PcodeOp.CALLIND:
+                        if (d.getInput(0) == v) {
+                            return true; // the call target itself
+                        }
+                        break;
+                    default:
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** The varnode an address was derived from by copies, casts and constant adds. */

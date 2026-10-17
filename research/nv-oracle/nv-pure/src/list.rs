@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use crate::purity::{self, Access, Facts};
+use crate::purity::{self, Facts};
 use crate::source::{Source, Ty};
 
 /// One checkable function.
@@ -23,6 +23,12 @@ pub struct Pure {
     pub consts: Vec<String>,
     /// One buffer per pointer parameter (phase 1: read only).
     pub bufs: Vec<Buf>,
+    /// The exe may read memory at an address computed from the inputs (a
+    /// table index): the function or a callee has LOADs no input explains,
+    /// or no data flow. Only then can an engine read of memory it never maps
+    /// be the exe's own read (inconclusive); otherwise it is a read the exe
+    /// didn't make (`RustStrayRead`).
+    pub computed_reads: bool,
 }
 
 /// The buffer a pointer parameter points into.
@@ -250,15 +256,15 @@ pub fn build(src: &Source, facts: &BTreeMap<u32, Facts>) -> Listing {
             continue;
         }
         // ECX/EDX on entry: the entry-block scan, plus the data flow's inputs when
-        // they are dereferenced (it sees registers used after a branch too, which
-        // the scan stops at). A register the data flow only sees flowing into a
-        // call is not evidence: the decompiler lets ECX reach any callee whose
-        // convention it doesn't know (_ftol2 and the like).
+        // they are dereferenced or used as a number (it sees registers used after
+        // a branch too, which the scan stops at). A register the data flow only
+        // sees flowing into a call is not evidence: the decompiler lets ECX reach
+        // any callee whose convention it doesn't know (_ftol2 and the like).
         let mut with_regs = f.clone();
         if let Some(args) = &f.args {
             for (name, reg) in [("ecx", "ECX"), ("edx", "EDX")] {
-                let dereferenced = args.get(name).is_some_and(Access::dereferenced);
-                if dereferenced && !with_regs.reg_in.iter().any(|r| r == reg) {
+                let used = args.get(name).is_some_and(|a| a.dereferenced() || a.used);
+                if used && !with_regs.reg_in.iter().any(|r| r == reg) {
                     with_regs.reg_in.push(reg.to_string());
                 }
             }
@@ -355,6 +361,11 @@ pub fn build(src: &Source, facts: &BTreeMap<u32, Facts>) -> Listing {
                 }
                 k
             },
+            computed_reads: std::iter::once(&addr).chain(callees.iter()).any(|a| {
+                facts
+                    .get(a)
+                    .is_none_or(|g| g.args.is_none() || g.untracked_loads != 0)
+            }),
             callees: callees.into_iter().collect(),
             bufs,
         });
@@ -370,8 +381,10 @@ pub const HEADER: &str = "\
 # or pointer arguments that are only read at known offsets (phase 1, #193).
 # Addresses, signatures, the constants each function compares with (used as
 # boundary inputs) and, per pointer parameter, `param:size:bias:off.size;...`
-# (the buffer and the fields the exe reads). Regenerate after translations land.
-address\tcc\tparams\tret\tunit\tcallees\tconsts\tbuffers
+# (the buffer and the fields the exe reads), and `computed_reads` (1 when the exe
+# may read an address computed from the inputs, such as a table index).
+# Regenerate after translations land.
+address\tcc\tparams\tret\tunit\tcallees\tconsts\tbuffers\tcomputed_reads
 ";
 
 pub fn to_tsv(list: &[Pure]) -> String {
@@ -381,7 +394,7 @@ pub fn to_tsv(list: &[Pure]) -> String {
         let callees: Vec<String> = p.callees.iter().map(|c| format!("{c:08x}")).collect();
         let _ = writeln!(
             s,
-            "{:08x}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{:08x}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
             p.addr,
             p.cc,
             params.join(","),
@@ -396,7 +409,8 @@ pub fn to_tsv(list: &[Pure]) -> String {
                     format!("{}:{}:{}:{}", b.param, b.size, b.bias, f.join(";"))
                 })
                 .collect::<Vec<_>>()
-                .join("|")
+                .join("|"),
+            u8::from(p.computed_reads)
         );
     }
     s
@@ -445,6 +459,9 @@ pub fn from_tsv(text: &str) -> Result<Vec<Pure>, String> {
                         .collect()
                 })
                 .unwrap_or_default(),
+            // Missing (a list from before the column): the exe may read computed
+            // addresses, so a stray engine read stays inconclusive as it was.
+            computed_reads: c.get(8).is_none_or(|v| *v != "0"),
             bufs: match c.get(7).filter(|v| !v.is_empty()) {
                 None => Vec::new(),
                 Some(v) => v
@@ -567,6 +584,7 @@ mod tests {
             callees: vec![0x0040_1000],
             consts: vec!["i26".into(), "d3ff0000000000000".into()],
             bufs: vec![Buf::from_reads(0, &[(-4, 4), (8, 2)])],
+            computed_reads: false,
         };
         let back = from_tsv(&to_tsv(std::slice::from_ref(&p))).unwrap();
         assert_eq!(back.len(), 1);
@@ -576,5 +594,16 @@ mod tests {
         assert_eq!(back[0].callees, p.callees);
         assert_eq!(back[0].consts, p.consts);
         assert_eq!(back[0].bufs, p.bufs);
+        assert!(!back[0].computed_reads);
+        let reads = Pure {
+            computed_reads: true,
+            ..p
+        };
+        let text = to_tsv(&[reads]);
+        assert!(from_tsv(&text).unwrap()[0].computed_reads);
+        // A list from before the column: computed reads assumed (inconclusive, as before).
+        let line = text.lines().last().unwrap();
+        let old = &line[..line.rfind('\t').unwrap()];
+        assert!(from_tsv(old).unwrap()[0].computed_reads);
     }
 }
