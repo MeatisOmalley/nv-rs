@@ -116,23 +116,27 @@ Not all 63k functions should be translated. Each function gets one status:
 | --- | --- | --- |
 | `translated` | Rust translation, marked with its address (ADR-0003), with a test | Havok solver |
 | `traced` | Behaviour read from it and written in our own code | most current systems |
-| `platform` | Replaced by Rust/Bevy. Any behaviour the game shows is still traced (shader constants, audio falloff) | D3D9 renderer, shader passes, DirectInput, DirectSound, Win32 threads, allocator |
+| `platform` | Replaced by our own Rust layer under the translated code. Any behaviour the game shows is still traced (audio falloff) | Direct3D 9 and D3DX themselves (ADR-0007), DirectInput, DirectSound, Win32 threads and file finding, allocator, Xbox system utilities, Bink playback |
 | `library` | Compiler or standard library code | CRT, STL templates, thunks |
 | `open` | Not looked at yet | |
 
 The layers to translate are Bethesda's game code (forms, references,
 process/AI, scripts, quests, menus' logic, save/load), Havok, Gamebryo's
-scene graph and animation controllers, and FaceGen. The renderer stays
-Bevy, driven by data traced from the game and its shaders.
+scene graph and animation controllers, FaceGen, and the renderer. The
+renderer is translated too and runs on our own Direct3D 9 layer on wgpu,
+with the game's shaders converted at load time
+([ADR-0007](adr/0007-renderer-translated-on-own-d3d9-layer.md)); Bevy stays
+the development viewer until that path matches.
 
-Inside the platform layers, the parts that are logic rather than drawing
-or OS calls are translated too (the ledger's `LOGIC_UNITS`): all of
-SpeedTree (tree building, splines, random numbers, wind), the scene-graph
-nodes and shader property objects that models load, the shader manager's
-state, the image-space manager (which effects run, from game state),
-archive lookup and the file layer above the OS reads, and D3DX's maths.
-About 600 shader and file-system functions the map placed in no unit stay
-`platform` until someone sorts them by reading them.
+All of `NiXenonRenderer` and `BSShader` is game code (ADR-0007; the
+ledger keeps only a D3DX import thunk there as `platform`), and so is the
+game code found inside platform subsystems (the ledger's `GAME_FUNCS`).
+Inside the remaining platform layers, the parts that are logic rather than OS calls
+are translated too (the ledger's `LOGIC_UNITS`): archive lookup and the
+file layer above the OS reads, and D3DX's maths; SpeedTree (tree building,
+splines, random numbers, wind) is game code as a whole. Each of the 2,115
+functions the ledger counted as `platform` before ADR-0007 was sorted by
+reading it; docs/SYSTEMS.md ("Renderer units") has the counts.
 
 ## What happens to the existing code
 
