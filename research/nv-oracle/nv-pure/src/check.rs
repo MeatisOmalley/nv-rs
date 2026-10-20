@@ -445,17 +445,22 @@ pub fn run(list: &[Pure], o: &Options) -> Result<Report, String> {
     let quiet = panic::take_hook();
     panic::set_hook(Box::new(|_| {}));
     let joined = std::thread::scope(|scope| {
-        let worker = scope.spawn(|| {
-            engine_side(
-                &cases,
-                &template,
-                &exe,
-                &exe_results,
-                &exe_buffers,
-                &progress,
-                &current,
-            )
-        });
+        // The engine's large translations (block state machines with big
+        // frames) need more than a spawned thread's default 2 MB stack.
+        let worker = std::thread::Builder::new()
+            .stack_size(256 << 20)
+            .spawn_scoped(scope, || {
+                engine_side(
+                    &cases,
+                    &template,
+                    &exe,
+                    &exe_results,
+                    &exe_buffers,
+                    &progress,
+                    &current,
+                )
+            })
+            .expect("spawn the engine-side worker");
         let mut seen = 0;
         let mut since = Instant::now();
         while !worker.is_finished() {
@@ -734,7 +739,15 @@ fn engine_side(
             // walked a pointer the data flow missed (005f65d0, 00a089c0). An
             // exe process that ends on the vector is read the same way (it
             // can neither fault nor loop on its buffers).
-            let stuck = matches!(unfinished, Some(Kind::ExeTimeout | Kind::ExeCrash));
+            // A stack overflow in the exe is the same miss (a pointer cycle the
+            // data flow did not see, as in 00b15110 with a branch that is its
+            // own parent), and the engine side cannot run it: a Rust stack
+            // overflow ends the whole check.
+            let overflowed = matches!(
+                exe_results.get(&id),
+                Some(Outcome::Fault { name, .. }) if name == "stack_overflow"
+            );
+            let stuck = overflowed || matches!(unfinished, Some(Kind::ExeTimeout | Kind::ExeCrash));
             if stuck && !p.bufs.is_empty() {
                 *report.counts.entry(Kind::DataFlowMiss).or_insert(0) += 1;
                 *report.failing_functions.entry(p.addr).or_insert(0) += 1;
@@ -743,7 +756,9 @@ fn engine_side(
                     p.unit.clone(),
                     id,
                     shown(),
-                    if unfinished == Some(Kind::ExeTimeout) {
+                    if overflowed {
+                        "stack overflow in the exe (a pointer cycle)".into()
+                    } else if unfinished == Some(Kind::ExeTimeout) {
                         "no result within --exe-timeout (a loop)".into()
                     } else {
                         "nv-call's process ended on this vector".into()
@@ -755,6 +770,12 @@ fn engine_side(
             }
             if let Some(k) = unfinished {
                 *report.counts.entry(k).or_insert(0) += 1;
+                continue;
+            }
+            if overflowed {
+                // A scalar function that recurses without end on its inputs:
+                // nothing the engine side can be run against.
+                *report.counts.entry(Kind::ExeCrash).or_insert(0) += 1;
                 continue;
             }
             if let Ok(mut c) = current.lock() {
